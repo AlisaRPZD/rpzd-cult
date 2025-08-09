@@ -318,6 +318,7 @@
             margin-bottom: 3vw;
             box-shadow: var(--shadow);
             transform: translateZ(5px);
+            list-style: none; /* Убираем маркеры у списка банды */
         }
         
         .mission-title, .admin-title, .gang-title {
@@ -925,6 +926,16 @@
                     <input type="number" id="admin-free-cracks-count-input" placeholder="Введите количество" />
                     <button id="set-free-cracks-btn">Установить бесп. попытки</button>
                 </div>
+
+                <div class="panel-section">
+                    <h3>Управление VIP-статусом</h3>
+                    <label for="admin-vip-address-input">Адрес кошелька</label>
+                    <input type="text" id="admin-vip-address-input" placeholder="Введите адрес кошелька" />
+                    <label for="admin-vip-duration-input">Длительность VIP (дней)</label>
+                    <input type="number" id="admin-vip-duration-input" placeholder="Напр. 10" value="10" />
+                    <button id="grant-vip-btn">Выдать VIP</button>
+                    <button id="revoke-vip-btn" style="background-color: var(--highlight-color); margin-top: 1.5vw;">Отозвать VIP</button>
+                </div>
                 
                 <div class="panel-section">
                     <h3>Список пользователей</h3>
@@ -1117,7 +1128,7 @@
 
         // TonConnectUI setup
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: 'https://rpzd-cult1.vercel.app/.well-known/tonconnect-manifest.json',
+            manifestUrl: 'https://rpzd-cult.vercel.app/tonconnect-manifest.json',
             buttonRootId: 'connect-wallet-btn'
         });
 
@@ -1132,6 +1143,7 @@
         let userIsVip = false;
         let userFreeCracks = 0;
         let lastFreeCrackReset = 0;
+        let userDbListener = null;
         
         // --- Firebase Functions ---
         function loadMissions() {
@@ -1257,6 +1269,41 @@
         
         // --- End of Firebase Functions ---
 
+        // --- NEW: Function to load and display the referral list ---
+        function loadAndDisplayGang() {
+            if (!walletAddress) return;
+
+            const gangList = document.getElementById('gang-members-list');
+            const gangContainerP = document.getElementById('gang-container').querySelector('p');
+            gangList.innerHTML = '<li>Загрузка братишек...</li>';
+
+            const invitedUsersRef = ref(db, `users/${walletAddress}/invitedUsers`);
+            
+            onValue(invitedUsersRef, (snapshot) => {
+                gangList.innerHTML = ''; // Clear the list
+                if (snapshot.exists()) {
+                    const invitedUsers = snapshot.val();
+                    const invitedCount = Object.keys(invitedUsers).length;
+                    gangContainerP.textContent = `Пригласи братишек и качайся вместе! У тебя в банде: ${invitedCount} чел.`;
+
+                    // Display each referred user
+                    for (const key in invitedUsers) {
+                        const invitedAddress = invitedUsers[key];
+                        const shortAddress = invitedAddress.substring(0, 6) + '...' + invitedAddress.substring(invitedAddress.length - 4);
+                        
+                        const li = document.createElement('li');
+                        li.className = 'gang-member-item';
+                        li.innerHTML = `<span>😎 ${shortAddress}</span>`;
+                        gangList.appendChild(li);
+                    }
+
+                } else {
+                    gangContainerP.textContent = `Пригласи братишек и качайся вместе!`;
+                    gangList.innerHTML = '<li>Твоя банда пока пуста. Пригласи первого братишку!</li>';
+                }
+            });
+        }
+
         function updateMissionsDisplay() {
             const container = document.getElementById('missions-container');
             container.innerHTML = '';
@@ -1347,7 +1394,6 @@
                     .then(() => {
                         alert('Бесплатные попытки успешно установлены.');
                         updateAdminPanel();
-                        loadData();
                     })
                     .catch(error => console.error("Error setting free cracks: ", error));
             } else {
@@ -1423,56 +1469,6 @@
 
         window.completeMission = completeMission;
         
-        function loadData() {
-            if (!walletAddress) return;
-            const userRef = ref(db, 'users/' + walletAddress);
-            onValue(userRef, (snapshot) => {
-                const userData = snapshot.val() || { balance: 0, lastClaim: 0, isVip: false, vipUntil: 0, freeCracks: 0, lastFreeCrackReset: 0 };
-                balances[walletAddress] = userData.balance || 0;
-                lastClaims[walletAddress] = userData.lastClaim || 0;
-                userProgress[walletAddress] = userData.progress || {};
-                
-                // Проверка на истечение VIP-статуса
-                if (userData.isVip && userData.vipUntil && userData.vipUntil < Date.now()) {
-                    console.log('VIP статус истек. Обновляем...');
-                    userIsVip = false;
-                    // Отправляем обновление в Firebase
-                    update(userRef, { isVip: false });
-                } else {
-                    userIsVip = userData.isVip || false;
-                }
-
-                userFreeCracks = userData.freeCracks || 0;
-                lastFreeCrackReset = userData.lastFreeCrackReset || 0;
-                
-                // Логика сброса бесплатных попыток каждый час
-                const now = Date.now();
-                if (now - lastFreeCrackReset >= FREE_CRACK_INTERVAL) {
-                    if (userFreeCracks < MAX_FREE_CRACKS_PER_HOUR) {
-                        const newFreeCracks = MAX_FREE_CRACKS_PER_HOUR;
-                        update(userRef, { freeCracks: newFreeCracks, lastFreeCrackReset: now })
-                            .then(() => {
-                                userFreeCracks = newFreeCracks;
-                                lastFreeCrackReset = now;
-                                updateUI();
-                            })
-                            .catch(error => console.error("Error resetting free cracks: ", error));
-                    } else {
-                        // Если уже MAX, просто обновим время сброса, чтобы не сбрасывать чаще
-                        update(userRef, { lastFreeCrackReset: now })
-                             .then(() => {
-                                lastFreeCrackReset = now;
-                                updateUI();
-                            })
-                            .catch(error => console.error("Error updating lastFreeCrackReset: ", error));
-                    }
-                }
-
-                updateUI();
-                updateRefLink();
-            });
-        }
-        
         function updateRefLink() {
             const refLinkInput = document.getElementById('ref-link-input');
             if (walletAddress) {
@@ -1483,7 +1479,6 @@
             }
         }
         
-        // ОБНОВЛЕННАЯ ФУНКЦИЯ shareRefLink
         function shareRefLink() {
             if (!walletAddress) {
                 alert('Подключите кошелек, чтобы получить и поделиться ссылкой.');
@@ -1494,7 +1489,6 @@
             const shareText = `Присоединяйся к культу RPZD по моей реферальной ссылке! ${refLink}`;
 
             if (navigator.share) {
-                // Используем нативную функцию шеринга, если доступна
                 navigator.share({
                     title: 'RPZD Cult',
                     text: shareText,
@@ -1503,20 +1497,17 @@
                     console.log('Спасибо за шеринг!');
                 }).catch((error) => {
                     console.error('Ошибка при использовании navigator.share:', error);
-                    // Если нативный шеринг не сработал или отменен, показать модальное окно
                     openShareModal(shareText, refLink);
                 });
             } else {
-                // Если navigator.share не поддерживается, открываем свое модальное окно
                 openShareModal(shareText, refLink);
             }
         }
         
-        // Обработчик для кнопки "Копировать"
         document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
             const refLinkInput = document.getElementById('ref-link-input');
             refLinkInput.select();
-            refLinkInput.setSelectionRange(0, 99999); // Для мобильных устройств
+            refLinkInput.setSelectionRange(0, 99999); 
             document.execCommand('copy');
             alert('Реферальная ссылка скопирована!');
         });
@@ -1575,16 +1566,81 @@
             }
         }
         
-        // Wallet connection logic
+        // --- REFACTORED: Wallet connection logic ---
         tonConnectUI.onStatusChange(wallet => {
+            // If there's an existing listener, detach it
+            if (userDbListener) {
+                userDbListener(); // onValue returns a function to unsubscribe
+            }
+
             if (wallet) {
                 walletAddress = wallet.account.address;
-                updateUI();
-                loadData();
+                const userRef = ref(db, 'users/' + walletAddress);
+
+                // Set up a new persistent listener for the user's data
+                userDbListener = onValue(userRef, (snapshot) => {
+                    if (!snapshot.exists()) {
+                        // --- NEW USER LOGIC ---
+                        console.log("New user detected:", walletAddress);
+                        const storedReferrer = sessionStorage.getItem('referrerAddress');
+                        const initialUserData = {
+                            balance: 0,
+                            lastClaim: 0,
+                            claimCount: 0,
+                            isVip: false,
+                            vipUntil: 0,
+                            freeCracks: MAX_FREE_CRACKS_PER_HOUR,
+                            lastFreeCrackReset: Date.now(),
+                            ...(storedReferrer && { invitedBy: storedReferrer })
+                        };
+
+                        set(userRef, initialUserData).then(() => {
+                            console.log("New user created in DB.");
+                            if (storedReferrer) {
+                                const referrerInvitedListRef = ref(db, `users/${storedReferrer}/invitedUsers`);
+                                const newReferralRef = push(referrerInvitedListRef);
+                                set(newReferralRef, walletAddress).then(() => {
+                                    console.log(`Added ${walletAddress} to ${storedReferrer}'s referral list.`);
+                                });
+                                sessionStorage.removeItem('referrerAddress');
+                            }
+                        });
+                    }
+
+                    // --- DATA PROCESSING LOGIC ---
+                    const userData = snapshot.val() || { balance: 0, lastClaim: 0, isVip: false, vipUntil: 0, freeCracks: 0, lastFreeCrackReset: 0, claimCount: 0 };
+                    balances[walletAddress] = userData.balance || 0;
+                    lastClaims[walletAddress] = userData.lastClaim || 0;
+                    userProgress[walletAddress] = { claimCount: userData.claimCount || 0 };
+                    
+                    if (userData.isVip && userData.vipUntil && userData.vipUntil < Date.now()) {
+                        userIsVip = false;
+                        update(userRef, { isVip: false });
+                    } else {
+                        userIsVip = userData.isVip || false;
+                    }
+
+                    userFreeCracks = userData.freeCracks || 0;
+                    lastFreeCrackReset = userData.lastFreeCrackReset || 0;
+
+                    const now = Date.now();
+                    if (now - lastFreeCrackReset >= FREE_CRACK_INTERVAL) {
+                        const newFreeCracks = MAX_FREE_CRACKS_PER_HOUR;
+                        if(userFreeCracks < newFreeCracks){
+                             update(userRef, { freeCracks: newFreeCracks, lastFreeCrackReset: now });
+                        }
+                    }
+
+                    updateUI();
+                    updateRefLink();
+                });
+
+                // These can be called once on connection
                 checkClaimTimer();
                 updateMissionsDisplay();
-                updateRefLink();
+
             } else {
+                // User disconnected
                 walletAddress = null;
                 updateUI();
                 updateRefLink();
@@ -1593,18 +1649,18 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
+             // --- NEW: Grab referrer from URL ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const referrer = urlParams.get('ref');
+            if (referrer) {
+                // Store in session storage to survive reloads before wallet connection
+                sessionStorage.setItem('referrerAddress', referrer);
+                console.log(`Referrer found and stored: ${referrer}`);
+            }
+
             loadMissions();
             loadBanner();
             loadSafeFeed();
-            if (tonConnectUI.connected) {
-                walletAddress = tonConnectUI.wallet.account.address;
-                loadData();
-                checkClaimTimer();
-                updateRefLink();
-            } else {
-                updateUI();
-                updateRefLink();
-            }
 
             const mainApp = document.getElementById('main-app');
             const missionsScreen = document.getElementById('missions-screen');
@@ -1629,8 +1685,10 @@
                 document.getElementById('safe-result-display').textContent = '';
                 document.getElementById('safe-result-display').style.opacity = '0';
             });
-            document.getElementById('gang-btn').addEventListener('click', () => showScreen(gangScreen));
-            // УДАЛЕНО: document.getElementById('ref-btn').addEventListener('click', () => showScreen(gangScreen));
+            document.getElementById('gang-btn').addEventListener('click', () => {
+                showScreen(gangScreen);
+                loadAndDisplayGang(); // Explicitly load gang data when screen is opened
+            });
             document.getElementById('vip-btn').addEventListener('click', () => showScreen(vipScreen));
             document.getElementById('info-btn').addEventListener('click', () => showScreen(infoScreen));
             document.getElementById('admin-btn').addEventListener('click', () => {
@@ -1640,11 +1698,10 @@
                 }
             });
             
-            // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ ПОКУПКИ VIP
             document.getElementById('buy-vip-btn').addEventListener('click', handleVipPurchase);
-
-            // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ "Поделиться ссылкой"
             document.getElementById('share-ref-link-btn').addEventListener('click', shareRefLink);
+            document.getElementById('grant-vip-btn').addEventListener('click', grantVipStatus);
+            document.getElementById('revoke-vip-btn').addEventListener('click', revokeVipStatus);
         });
 
         document.getElementById('claim-btn').addEventListener('click', () => {
@@ -1708,9 +1765,9 @@
         }
         
         window.completeMission = completeMission;
-        window.shareRefLink = shareRefLink; // Делаем доступной для глобального вызова
-        window.openShareModal = openShareModal; // Добавляем глобальную доступность
-        window.closeShareModal = closeShareModal; // Добавляем глобальную доступность
+        window.shareRefLink = shareRefLink; 
+        window.openShareModal = openShareModal;
+        window.closeShareModal = closeShareModal; 
         
         // --- Safe Cracking Logic (Animated Dial) ---
         const safeDial = document.getElementById('safe-dial');
@@ -1718,7 +1775,6 @@
         const safeResultDisplay = document.getElementById('safe-result-display');
         const safeResultMsg = document.getElementById('safe-result-msg');
 
-        // Audio elements
         const crackSound = document.getElementById('crack-sound');
         const winSound = document.getElementById('win-sound');
         const failSound = document.getElementById('fail-sound');
@@ -1726,7 +1782,6 @@
         let dialAnimationInterval;
         let crackAnimationFrameId;
         
-        // Function to choose a prize based on weights
         function selectPrize() {
             let totalWeight = SAFE_CRACK_PRIZES.reduce((sum, prize) => sum + prize.weight, 0);
             let random = Math.random() * totalWeight;
@@ -1737,7 +1792,7 @@
                     return SAFE_CRACK_PRIZES[i];
                 }
             }
-            return SAFE_CRACK_PRIZES[SAFE_CRACK_PRIZES.length - 1]; // Fallback
+            return SAFE_CRACK_PRIZES[SAFE_CRACK_PRIZES.length - 1];
         }
 
         function animateSafeDial() {
@@ -1773,19 +1828,16 @@
             safeResultDisplay.textContent = 'Взлом...';
             safeResultDisplay.style.color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
             safeResultDisplay.style.opacity = '1';
-            safeResultMsg.textContent = ''; // Clear previous message
+            safeResultMsg.textContent = ''; 
 
-            // Play crack sound
             crackSound.play();
-
-            // Start dial animation
             animateSafeDial();
 
-            const crackDuration = 3000; // 3 секунды
+            const crackDuration = 3000;
             setTimeout(async () => {
                 stopSafeDialAnimation();
-                crackSound.pause(); // Stop crack sound
-                crackSound.currentTime = 0; // Reset sound
+                crackSound.pause(); 
+                crackSound.currentTime = 0;
 
                 const selectedPrize = selectPrize();
                 let newBalance = currentBalance;
@@ -1802,18 +1854,18 @@
 
                 if (selectedPrize.type === 'rpzd') {
                     newBalance += selectedPrize.value;
-                    winSound.play(); // Play win sound
+                    winSound.play();
                 } else if (selectedPrize.type === 'free_crack') {
                     newFreeCracks += selectedPrize.value;
-                    winSound.play(); // Play win sound
+                    winSound.play();
                 } else if (selectedPrize.type === 'loss') {
                     if (selectedPrize.value < 0) {
                         newBalance += selectedPrize.value;
                     }
-                    failSound.play(); // Play fail sound
+                    failSound.play();
                 }
 
-                safeDial.textContent = '🔒'; // Show lock or a symbol when done
+                safeDial.textContent = '🔒';
                 safeResultDisplay.textContent = selectedPrize.value > 0 ? `+${selectedPrize.value} RPZD` : (selectedPrize.value < 0 ? `${selectedPrize.value} RPZD` : 'Ничего');
                 safeResultDisplay.style.color = textColor;
                 safeResultMsg.textContent = prizeText;
@@ -1821,13 +1873,9 @@
                 const updates = {};
                 updates['balance'] = newBalance;
                 updates['freeCracks'] = newFreeCracks;
-                updates['lastFreeCrackReset'] = lastFreeCrackReset;
 
                 try {
                     await update(ref(db, `users/${walletAddress}`), updates);
-                    balances[walletAddress] = newBalance;
-                    userFreeCracks = newFreeCracks;
-                    updateUI();
                     const safeAttemptsRef = ref(db, 'safe_attempts');
                     const newAttemptRef = push(safeAttemptsRef);
                     await set(newAttemptRef, {
@@ -1845,14 +1893,13 @@
                     setTimeout(() => {
                         safeResultDisplay.textContent = '';
                         safeResultDisplay.style.opacity = '0';
-                    }, 3000); // Скрыть результат через 3 секунды
+                    }, 3000);
                 }
             }, crackDuration);
         }
 
         startSafeCrackingBtn.addEventListener('click', startSafeCracking);
         
-        // НОВАЯ ФУНКЦИЯ ДЛЯ ПОКУПКИ VIP
         async function handleVipPurchase() {
             if (!walletAddress) {
                 alert('Пожалуйста, подключите кошелек для покупки VIP.');
@@ -1860,7 +1907,7 @@
                 return;
             }
 
-            if (VIP_WALLET_ADDRESS === "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM") { // Замени на свой адрес
+            if (VIP_WALLET_ADDRESS === "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM") { 
                 alert("Ошибка: Адрес кошелька для VIP-оплаты не настроен. Обратитесь к администратору.");
                 return;
             }
@@ -1876,10 +1923,8 @@
             };
 
             try {
-                // Отправляем транзакцию
                 await tonConnectUI.sendTransaction(transaction);
                 
-                // В случае успеха, обновляем статус пользователя в Firebase
                 const vipUntil = Date.now() + (VIP_DURATION_DAYS * 24 * 60 * 60 * 1000);
                 const userRef = ref(db, `users/${walletAddress}`);
                 
@@ -1888,7 +1933,6 @@
                     vipUntil: vipUntil
                 });
 
-                // Обновляем локальные данные и UI
                 userIsVip = true;
                 
                 alert('Поздравляем! Вы приобрели VIP-статус!');
@@ -1898,6 +1942,64 @@
             } catch (error) {
                 console.error('Ошибка при покупке VIP:', error);
                 alert('Покупка VIP была отменена или произошла ошибка.');
+            }
+        }
+
+        async function grantVipStatus() {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+
+            const targetAddress = document.getElementById('admin-vip-address-input').value.trim();
+            const durationDays = parseInt(document.getElementById('admin-vip-duration-input').value);
+
+            if (!targetAddress || isNaN(durationDays) || durationDays <= 0) {
+                alert('Пожалуйста, введите корректный адрес и длительность VIP-статуса.');
+                return;
+            }
+
+            const userRef = ref(db, `users/${targetAddress}`);
+            const vipUntil = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+
+            try {
+                await update(userRef, {
+                    isVip: true,
+                    vipUntil: vipUntil
+                });
+                alert(`VIP-статус успешно выдан пользователю ${targetAddress} на ${durationDays} дней.`);
+                document.getElementById('admin-vip-address-input').value = ''; // Clear input
+            } catch (error) {
+                console.error('Ошибка при выдаче VIP-статуса:', error);
+                alert('Произошла ошибка при выдаче VIP-статуса.');
+            }
+        }
+
+        async function revokeVipStatus() {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+
+            const targetAddress = document.getElementById('admin-vip-address-input').value.trim();
+
+            if (!targetAddress) {
+                alert('Пожалуйста, введите адрес кошелька.');
+                return;
+            }
+
+            const userRef = ref(db, `users/${targetAddress}`);
+
+            try {
+                await update(userRef, {
+                    isVip: false,
+                    vipUntil: 0
+                });
+                alert(`VIP-статус успешно отозван у пользователя ${targetAddress}.`);
+                document.getElementById('admin-vip-address-input').value = ''; // Clear input
+            } catch (error) {
+                console.error('Ошибка при отзыве VIP-статуса:', error);
+                alert('Произошла ошибка при отзыве VIP-статуса.');
             }
         }
     </script>
