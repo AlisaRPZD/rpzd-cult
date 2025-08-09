@@ -136,6 +136,20 @@
             font-size: 4vw; /* Адаптивный размер шрифта */
             margin-right: 1.5vw;
         }
+        
+        /* NEW STYLE FOR VIP TIMER */
+        .vip-timer {
+            font-family: 'Fira Code', monospace;
+            font-size: 3.5vw;
+            color: var(--highlight-color);
+            text-shadow: 0 0 8px var(--highlight-color);
+            margin-top: 1vw;
+            padding: 1.5vw;
+            background: rgba(255, 0, 255, 0.1);
+            border: 1px solid var(--highlight-color);
+            border-radius: 1.5vw;
+        }
+
 
         #wallet-info {
             display: inline-block;
@@ -729,6 +743,7 @@
             .balance-box p:first-child { font-size: 48px; }
             #user-level { font-size: 24px; }
             .user-avatar { font-size: 24px; margin-right: 8px; }
+            .vip-timer { font-size: 14px; }
             #wallet-info, button:not(#claim-btn) { font-size: 16px; padding: 12px; }
             #claim-btn { width: 200px; height: 200px; }
             #claim-btn:hover {
@@ -768,6 +783,7 @@
             <div class="balance-box">
                 <p>💰 <span id="rpzd-balance">0</span> RPZD</p>
                 <p id="user-level"><span class="user-avatar" id="user-avatar"></span><span id="user-level-text">Начинающий распиздяй</span></p>
+                <p id="vip-status-display" class="vip-timer" style="display: none;"></p>
                 <p id="wallet-info" title=""></p>
             </div>
             <div class="buttons">
@@ -850,6 +866,7 @@
             <p>Преимущества:</p>
             <ul>
                 <li>Клейм раз в 2 часа вместо 3</li>
+                <li>Шанс на эксклюзивный VIP джекпот в сейфе</li>
                 <li>Дополнительные бонусы в будущем</li>
             </ul>
             <p>Стоимость: 10 TON</p>
@@ -1087,28 +1104,30 @@
         const CLAIM_INTERVAL = 3 * 60 * 60 * 1000;
         const VIP_CLAIM_INTERVAL = 2 * 60 * 60 * 1000;
         const RPZD_AMOUNT = 69;
-        const SAFE_CRACK_COST = 10; // Стоимость одной попытки взлома
-        const FREE_CRACK_INTERVAL = 1 * 60 * 60 * 1000; // 1 час
-        const MAX_FREE_CRACKS_PER_HOUR = 3; // Максимум бесплатных попыток в час
+        const SAFE_CRACK_COST = 10;
+        const FREE_CRACK_INTERVAL = 1 * 60 * 60 * 1000;
+        const MAX_FREE_CRACKS_PER_HOUR = 3;
+        const LOSING_STREAK_THRESHOLD = 5; // Порог для утешительного приза
+        const LOSING_STREAK_PRIZE = 15; // Размер утешительного приза
 
-        // ВАЖНО: Замените "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM" на АДРЕС ВАШЕГО TON-КОШЕЛЬКА для получения оплаты за VIP.
         const VIP_WALLET_ADDRESS = "UQApbUtnEIvpbBzqVIHC6xGEOw4Qr7qyO35arnNpayM1ZWJa"; 
-        const VIP_COST_TON = 10; // Стоимость VIP в TON
-        const VIP_DURATION_DAYS = 10; // Длительность VIP в днях
+        const VIP_COST_TON = 10;
+        const VIP_DURATION_DAYS = 10;
 
-        // Новые призы для "Взлома Сейфа" с юмористическими сообщениями
+        // --- ИЗМЕНЕНА ЛОГИКА ШАНСОВ И ДОБАВЛЕН VIP ПРИЗ ---
         const SAFE_CRACK_PRIZES = [
-            { id: 0, type: 'rpzd', value: 100, text: "🤯 ОГО! Сейф разорвало в клочья! ЭТО ДЖЕКПОТ!", color: "#FF00FF", weight: 0.5 }, // Джекпот
-            { id: 1, type: 'rpzd', value: 70, text: "🎉 Дверь сейфа распахнулась! 70 RPZD твои!", color: "#00FFFF", weight: 1 },
-            { id: 2, type: 'rpzd', value: 55, text: "Ты это сделал! Сейф опустошен: +55 RPZD", color: "#00FF00", weight: 2 },
-            { id: 3, type: 'rpzd', value: 50, text: "Сейф поддался! Мои поздравления: +50 RPZD", color: "#FFC107", weight: 3 },
-            { id: 4, type: 'rpzd', value: 30, text: "Отлично! +30 RPZD из сейфа!", color: "#2196F3", weight: 5 },
-            { id: 5, type: 'rpzd', value: 15, text: "Мелочь, но приятно: +15 RPZD", color: "#9C27B0", weight: 7 },
-            { id: 6, type: 'rpzd', value: 5, text: " RPZD-дача! +5 RPZD", color: "#4CAF50", weight: 10 },
-            { id: 7, type: 'free_crack', value: 1, text: "Нашел отмычку! +1 Бесплатная Попытка", color: "#FFFF00", weight: 11 },
-            { id: 8, type: 'loss', value: 0, text: "Эх, не в этот раз! Сейф оказался крепким орешком, но мы его наебем в другой раз!", color: "#E0E0E0", weight: 4 },
-            { id: 9, type: 'loss', value: -10, text: "Система заблокировалась. Ну ничего страшного, в другой раз мы его наебем! (-10 RPZD)", color: "#F44336", weight: 8 },
+            { id: 0, type: 'rpzd', value: 100, text: "🤯 ОГО! Сейф разорвало в клочья! ЭТО ДЖЕКПОТ!", color: "#FF00FF", weight: 1 }, // Очень редкий джекпот
+            { id: 1, type: 'rpzd', value: 70, text: "🎉 Дверь сейфа распахнулась! 70 RPZD твои!", color: "#00FFFF", weight: 2 },
+            { id: 2, type: 'rpzd', value: 50, text: "Сейф поддался! Мои поздравления: +50 RPZD", color: "#00FF00", weight: 4 },
+            { id: 3, type: 'rpzd', value: 30, text: "Отлично! +30 RPZD из сейфа!", color: "#FFC107", weight: 8 },
+            { id: 4, type: 'rpzd', value: 15, text: "Мелочь, но приятно: +15 RPZD", color: "#2196F3", weight: 15 },
+            { id: 5, type: 'rpzd', value: 5, text: " RPZD-дача! +5 RPZD", color: "#4CAF50", weight: 25 },
+            { id: 6, type: 'free_crack', value: 1, text: "Нашел отмычку! +1 Бесплатная Попытка", color: "#FFFF00", weight: 10 },
+            { id: 7, type: 'loss', value: 0, text: "Эх, не в этот раз! Сейф оказался крепким орешком.", color: "#E0E0E0", weight: 40 }, // Шанс проигрыша увеличен
+            { id: 8, type: 'loss', value: -10, text: "Система заблокировалась. Минус 10 RPZD на ремонт.", color: "#F44336", weight: 10 }, // Шанс штрафа
+            { id: 9, type: 'vip_bonus', value: 150, text: "👑 VIP ДЖЕКПОТ! Святые угодники, ты сорвал куш!", color: "#FFD700", weight: 0.5 } // Эксклюзивный VIP приз
         ];
+
 
         const quotes = [
             "Флекс — это не выбор, а образ жизни.",
@@ -1141,9 +1160,12 @@
         let lastClaims = {};
         let userProgress = {};
         let userIsVip = false;
+        let userVipUntil = 0;
+        let userLosingStreak = 0;
         let userFreeCracks = 0;
         let lastFreeCrackReset = 0;
         let userDbListener = null;
+        let vipTimerInterval = null;
         
         // --- Firebase Functions ---
         function loadMissions() {
@@ -1176,7 +1198,7 @@
                     latestAttempts.forEach(attempt => {
                         const li = document.createElement('li');
                         const shortAddress = attempt.walletAddress.substring(0, 6) + '...' + attempt.walletAddress.substring(attempt.walletAddress.length - 4);
-                        const resultClass = attempt.type === 'loss' ? 'fail-text' : 'win-text';
+                        const resultClass = attempt.type.includes('loss') ? 'fail-text' : 'win-text';
                         li.innerHTML = `
                             <span>${shortAddress}</span>
                             <span class="${resultClass}">${attempt.prizeText}</span>
@@ -1355,9 +1377,13 @@
                 if (users) {
                     Object.keys(users).forEach(address => {
                         const user = users[address];
-                        const li = document.createElement('li');
-                        li.textContent = `Address: ${address}, Balance: ${user.balance || 0} RPZD, Free Cracks: ${user.freeCracks || 0}`;
+                        li = document.createElement('li');
+                        let userInfo = `Address: ${address}, Balance: ${user.balance || 0} RPZD`;
+                        if (user.isVip) {
+                            userInfo += `, VIP: ✅`;
+                        }
                         userBalancesList.appendChild(li);
+                        li.textContent = userInfo;
                     });
                 }
             }, { onlyOnce: true });
@@ -1520,13 +1546,42 @@
             const walletInfoSpan = document.getElementById('wallet-info');
             const adminBtn = document.getElementById('admin-btn');
             const freeCracksSpan = document.getElementById('free-cracks-count');
+            const vipStatusDisplay = document.getElementById('vip-status-display');
             
+            if (vipTimerInterval) {
+                clearInterval(vipTimerInterval);
+            }
+
             if (walletAddress) {
                 balanceSpan.textContent = (balances[walletAddress] || 0).toLocaleString();
                 const userBalance = balances[walletAddress] || 0;
-                const userLevel = userLevels.find(level => userBalance >= level.threshold) || userLevels[0];
-                levelSpan.textContent = userIsVip ? `⭐ ${userLevel.text}` : userLevel.text;
-                avatarSpan.textContent = userLevel.avatar;
+                let currentUserLevel = userLevels.find(level => userBalance >= level.threshold) || userLevels[0];
+                
+                if(userIsVip) {
+                    levelSpan.textContent = `👑 ${currentUserLevel.text}`;
+                    vipStatusDisplay.style.display = 'block';
+
+                    const updateTimer = () => {
+                        const timeLeft = userVipUntil - Date.now();
+                        if (timeLeft > 0) {
+                            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                            vipStatusDisplay.textContent = `VIP до: ${days}д ${hours}ч ${minutes}м`;
+                        } else {
+                             vipStatusDisplay.style.display = 'none';
+                             clearInterval(vipTimerInterval);
+                        }
+                    }
+                    updateTimer();
+                    vipTimerInterval = setInterval(updateTimer, 60000); // Update every minute
+
+                } else {
+                    levelSpan.textContent = currentUserLevel.text;
+                    vipStatusDisplay.style.display = 'none';
+                }
+
+                avatarSpan.textContent = currentUserLevel.avatar;
 
                 const shortAddress = walletAddress.substring(0, 6) + '...' + walletAddress.substring(walletAddress.length - 4);
                 walletInfoSpan.textContent = shortAddress;
@@ -1548,6 +1603,7 @@
                 walletInfoSpan.title = '';
                 adminBtn.style.display = 'none';
                 freeCracksSpan.textContent = '0';
+                vipStatusDisplay.style.display = 'none';
             }
             
             const bannerEl = document.getElementById('idea-banner');
@@ -1566,21 +1622,20 @@
             }
         }
         
-        // --- REFACTORED: Wallet connection logic ---
         tonConnectUI.onStatusChange(wallet => {
-            // If there's an existing listener, detach it
             if (userDbListener) {
-                userDbListener(); // onValue returns a function to unsubscribe
+                userDbListener();
+            }
+            if(vipTimerInterval) {
+                clearInterval(vipTimerInterval);
             }
 
             if (wallet) {
                 walletAddress = wallet.account.address;
                 const userRef = ref(db, 'users/' + walletAddress);
 
-                // Set up a new persistent listener for the user's data
                 userDbListener = onValue(userRef, (snapshot) => {
                     if (!snapshot.exists()) {
-                        // --- NEW USER LOGIC ---
                         console.log("New user detected:", walletAddress);
                         const storedReferrer = sessionStorage.getItem('referrerAddress');
                         const initialUserData = {
@@ -1589,6 +1644,7 @@
                             claimCount: 0,
                             isVip: false,
                             vipUntil: 0,
+                            losingStreak: 0,
                             freeCracks: MAX_FREE_CRACKS_PER_HOUR,
                             lastFreeCrackReset: Date.now(),
                             ...(storedReferrer && { invitedBy: storedReferrer })
@@ -1607,15 +1663,16 @@
                         });
                     }
 
-                    // --- DATA PROCESSING LOGIC ---
-                    const userData = snapshot.val() || { balance: 0, lastClaim: 0, isVip: false, vipUntil: 0, freeCracks: 0, lastFreeCrackReset: 0, claimCount: 0 };
+                    const userData = snapshot.val() || { balance: 0, lastClaim: 0, isVip: false, vipUntil: 0, freeCracks: 0, lastFreeCrackReset: 0, claimCount: 0, losingStreak: 0 };
                     balances[walletAddress] = userData.balance || 0;
                     lastClaims[walletAddress] = userData.lastClaim || 0;
                     userProgress[walletAddress] = { claimCount: userData.claimCount || 0 };
+                    userLosingStreak = userData.losingStreak || 0;
+                    userVipUntil = userData.vipUntil || 0;
                     
                     if (userData.isVip && userData.vipUntil && userData.vipUntil < Date.now()) {
                         userIsVip = false;
-                        update(userRef, { isVip: false });
+                        update(userRef, { isVip: false, vipUntil: 0 });
                     } else {
                         userIsVip = userData.isVip || false;
                     }
@@ -1635,25 +1692,20 @@
                     updateRefLink();
                 });
 
-                // These can be called once on connection
                 checkClaimTimer();
                 updateMissionsDisplay();
 
             } else {
-                // User disconnected
                 walletAddress = null;
                 updateUI();
                 updateRefLink();
             }
         });
 
-        // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-             // --- NEW: Grab referrer from URL ---
             const urlParams = new URLSearchParams(window.location.search);
             const referrer = urlParams.get('ref');
             if (referrer) {
-                // Store in session storage to survive reloads before wallet connection
                 sessionStorage.setItem('referrerAddress', referrer);
                 console.log(`Referrer found and stored: ${referrer}`);
             }
@@ -1687,7 +1739,7 @@
             });
             document.getElementById('gang-btn').addEventListener('click', () => {
                 showScreen(gangScreen);
-                loadAndDisplayGang(); // Explicitly load gang data when screen is opened
+                loadAndDisplayGang();
             });
             document.getElementById('vip-btn').addEventListener('click', () => showScreen(vipScreen));
             document.getElementById('info-btn').addEventListener('click', () => showScreen(infoScreen));
@@ -1723,15 +1775,7 @@
                 updates['lastClaim'] = now;
                 updates['claimCount'] = (userProgress[walletAddress].claimCount || 0) + 1;
 
-                update(ref(db, `users/${walletAddress}`), updates)
-                    .then(() => {
-                        lastClaims[walletAddress] = now;
-                        balances[walletAddress] = newBalance;
-                        userProgress[walletAddress].claimCount = updates['claimCount'];
-                        updateUI();
-                        checkClaimTimer();
-                    })
-                    .catch(error => console.error("Error claiming RPZD: ", error));
+                update(ref(db, `users/${walletAddress}`), updates);
             } else {
                 alert('Подожди немного, бро. Еще не время для нового клейма!');
             }
@@ -1769,7 +1813,6 @@
         window.openShareModal = openShareModal;
         window.closeShareModal = closeShareModal; 
         
-        // --- Safe Cracking Logic (Animated Dial) ---
         const safeDial = document.getElementById('safe-dial');
         const startSafeCrackingBtn = document.getElementById('start-safe-cracking-btn');
         const safeResultDisplay = document.getElementById('safe-result-display');
@@ -1780,19 +1823,23 @@
         const failSound = document.getElementById('fail-sound');
 
         let dialAnimationInterval;
-        let crackAnimationFrameId;
         
         function selectPrize() {
-            let totalWeight = SAFE_CRACK_PRIZES.reduce((sum, prize) => sum + prize.weight, 0);
+            // Фильтруем призы: VIP-приз доступен только для VIP-пользователей
+            const availablePrizes = userIsVip 
+                ? SAFE_CRACK_PRIZES 
+                : SAFE_CRACK_PRIZES.filter(p => p.type !== 'vip_bonus');
+
+            let totalWeight = availablePrizes.reduce((sum, prize) => sum + prize.weight, 0);
             let random = Math.random() * totalWeight;
 
-            for (let i = 0; i < SAFE_CRACK_PRIZES.length; i++) {
-                random -= SAFE_CRACK_PRIZES[i].weight;
+            for (let i = 0; i < availablePrizes.length; i++) {
+                random -= availablePrizes[i].weight;
                 if (random < 0) {
-                    return SAFE_CRACK_PRIZES[i];
+                    return availablePrizes[i];
                 }
             }
-            return SAFE_CRACK_PRIZES[SAFE_CRACK_PRIZES.length - 1];
+            return availablePrizes[availablePrizes.length - 1];
         }
 
         function animateSafeDial() {
@@ -1809,11 +1856,7 @@
         }
 
         async function startSafeCracking() {
-            if (!walletAddress) {
-                alert('Подключите кошелек, чтобы взломать сейф!');
-                return;
-            }
-            if (isCracking) return;
+            if (!walletAddress || isCracking) return;
             
             const hasFreeCrack = userFreeCracks > 0;
             const currentBalance = balances[walletAddress] || 0;
@@ -1826,7 +1869,7 @@
             isCracking = true;
             startSafeCrackingBtn.disabled = true;
             safeResultDisplay.textContent = 'Взлом...';
-            safeResultDisplay.style.color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            safeResultDisplay.style.color = 'var(--primary-color)';
             safeResultDisplay.style.opacity = '1';
             safeResultMsg.textContent = ''; 
 
@@ -1839,9 +1882,20 @@
                 crackSound.pause(); 
                 crackSound.currentTime = 0;
 
-                const selectedPrize = selectPrize();
+                let selectedPrize;
+                let isPityPrize = false;
+                
+                // Проверяем на "полосу неудач"
+                if (userLosingStreak >= LOSING_STREAK_THRESHOLD) {
+                    selectedPrize = { type: 'rpzd', value: LOSING_STREAK_PRIZE, text: `Череда неудач прервана! Вот тебе утешительный приз +${LOSING_STREAK_PRIZE} RPZD!`, color: '#00FF00' };
+                    isPityPrize = true;
+                } else {
+                    selectedPrize = selectPrize();
+                }
+
                 let newBalance = currentBalance;
                 let newFreeCracks = userFreeCracks;
+                let newLosingStreak = userLosingStreak;
 
                 if (hasFreeCrack) {
                     newFreeCracks--;
@@ -1849,42 +1903,42 @@
                     newBalance -= SAFE_CRACK_COST;
                 }
                 
-                let prizeText = selectedPrize.text;
-                let textColor = selectedPrize.color;
-
-                if (selectedPrize.type === 'rpzd') {
-                    newBalance += selectedPrize.value;
-                    winSound.play();
-                } else if (selectedPrize.type === 'free_crack') {
-                    newFreeCracks += selectedPrize.value;
-                    winSound.play();
-                } else if (selectedPrize.type === 'loss') {
-                    if (selectedPrize.value < 0) {
+                if (selectedPrize.type.includes('loss')) {
+                    failSound.play();
+                    newLosingStreak++;
+                    if(selectedPrize.value < 0) {
                         newBalance += selectedPrize.value;
                     }
-                    failSound.play();
+                } else { // Любой выигрыш сбрасывает счетчик неудач
+                    winSound.play();
+                    newBalance += selectedPrize.value;
+                    newLosingStreak = 0; // Сброс
+                    if (selectedPrize.type === 'free_crack') {
+                         newFreeCracks += selectedPrize.value;
+                    }
                 }
 
                 safeDial.textContent = '🔒';
-                safeResultDisplay.textContent = selectedPrize.value > 0 ? `+${selectedPrize.value} RPZD` : (selectedPrize.value < 0 ? `${selectedPrize.value} RPZD` : 'Ничего');
-                safeResultDisplay.style.color = textColor;
-                safeResultMsg.textContent = prizeText;
+                safeResultDisplay.textContent = selectedPrize.value !== 0 ? `${selectedPrize.value > 0 ? '+' : ''}${selectedPrize.value} ${selectedPrize.type !== 'free_crack' ? 'RPZD' : 'Попытка'}` : 'Ничего';
+                safeResultDisplay.style.color = selectedPrize.color;
+                safeResultMsg.textContent = selectedPrize.text;
                 
-                const updates = {};
-                updates['balance'] = newBalance;
-                updates['freeCracks'] = newFreeCracks;
-
+                const updates = {
+                    balance: newBalance,
+                    freeCracks: newFreeCracks,
+                    losingStreak: newLosingStreak
+                };
+               
                 try {
                     await update(ref(db, `users/${walletAddress}`), updates);
                     const safeAttemptsRef = ref(db, 'safe_attempts');
                     const newAttemptRef = push(safeAttemptsRef);
                     await set(newAttemptRef, {
                         walletAddress: walletAddress,
-                        prizeText: prizeText,
+                        prizeText: selectedPrize.text,
                         type: selectedPrize.type,
                         timestamp: Date.now()
                     });
-                    loadSafeFeed();
                 } catch (error) {
                     console.error("Ошибка при обновлении данных взлома сейфа: ", error);
                 } finally {
@@ -1893,7 +1947,7 @@
                     setTimeout(() => {
                         safeResultDisplay.textContent = '';
                         safeResultDisplay.style.opacity = '0';
-                    }, 3000);
+                    }, 4000);
                 }
             }, crackDuration);
         }
@@ -1923,8 +1977,16 @@
             };
 
             try {
+                // Отправляем транзакцию через TonConnectUI.
+                // Этот метод является стандартным и безопасным для инициирования транзакций на стороне клиента.
+                // Кошелек пользователя запросит подтверждение перед отправкой.
                 await tonConnectUI.sendTransaction(transaction);
                 
+                // Важно: Этот код выполняется после того, как пользователь подтвердил транзакцию в своем кошельке.
+                // Для максимальной безопасности в коммерческих проектах рекомендуется использовать 
+                // серверную проверку (webhooks/tonconnect-sse) для подтверждения поступления средств
+                // перед зачислением VIP-статуса в базу данных.
+                // В данном случае мы доверяем результату от TonConnectUI.
                 const vipUntil = Date.now() + (VIP_DURATION_DAYS * 24 * 60 * 60 * 1000);
                 const userRef = ref(db, `users/${walletAddress}`);
                 
@@ -1932,11 +1994,8 @@
                     isVip: true,
                     vipUntil: vipUntil
                 });
-
-                userIsVip = true;
                 
                 alert('Поздравляем! Вы приобрели VIP-статус!');
-                updateUI();
                 backToMain();
 
             } catch (error) {
@@ -1968,7 +2027,7 @@
                     vipUntil: vipUntil
                 });
                 alert(`VIP-статус успешно выдан пользователю ${targetAddress} на ${durationDays} дней.`);
-                document.getElementById('admin-vip-address-input').value = ''; // Clear input
+                document.getElementById('admin-vip-address-input').value = '';
             } catch (error) {
                 console.error('Ошибка при выдаче VIP-статуса:', error);
                 alert('Произошла ошибка при выдаче VIP-статуса.');
@@ -1996,7 +2055,7 @@
                     vipUntil: 0
                 });
                 alert(`VIP-статус успешно отозван у пользователя ${targetAddress}.`);
-                document.getElementById('admin-vip-address-input').value = ''; // Clear input
+                document.getElementById('admin-vip-address-input').value = '';
             } catch (error) {
                 console.error('Ошибка при отзыве VIP-статуса:', error);
                 alert('Произошла ошибка при отзыве VIP-статуса.');
