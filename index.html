@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>RPZD Cult</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <style>
+       @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&display=swap');
+       /* --- ОБНОВЛЕННЫЕ ПЕРЕМЕННЫЕ ДЛЯ КИСЛОТНОГО СТИЛЯ --- */
+        :root {
+            --primary-color: #00FF00; /* Яркий неоновый зеленый */
+            --secondary-color: #00FFFF; /* Кислотный голубой */
+            --highlight-color: #FF00FF; /* Малиновый */
+            --text-color: #E0E0E0; /* Светло-серый для контраста */
+            --bg-color: #1a1a1a; /* Темно-серый фон */
+            --panel-bg: rgba(25, 25, 25, 0.9); /* Полупрозрачный темно-серый для панелей */
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 15px rgba(0,0,0,0.5);
+            --light-glow: 0 0 5px var(--secondary-color), 0 0 10px var(--secondary-color), 0 0 15px var(--secondary-color);
+        }
+
+        html { font-size: 14px; }
+
+        body {
+            margin: 0;
+            font-family: 'Fira Code', monospace; /* Моноширинный шрифт */
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow-x: hidden; /* Добавлено для фиксации экрана по горизонтали */
+            position: relative;
+        }
+        
+        /* Сетка-фон */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to right, #2c2c2c 1px, transparent 1px), linear-gradient(to bottom, #2c2c2c 1px, transparent 1px);
+            background-size: 25px 25px;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .app, .missions-screen, .safe-screen, .admin-panel-screen, .gang-screen, .vip-screen, .info-screen {
+            backdrop-filter: blur(5px);
+            background: var(--panel-bg);
+            /* ОБНОВЛЕНО: Контейнер с фиксированной шириной и предотвращение вылезания элементов */
+            max-width: 95vw; /* Максимальная ширина, чтобы не выходить за края экрана */
+            width: 400px; /* Фиксированная ширина для контейнера на мобильных */
+            /* На мобильных устройствах центрируем с помощью margin: auto; */
+            margin: 20px auto; 
+            padding: 4vw; /* Относительный padding для адаптивности */
+            border-radius: 1.5vw;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden; /* Скрывает вылезающие элементы */
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            box-sizing: border-box; /* Учитывает padding и border в ширине */
+        }
+
+        .app:hover {
+            transform: translateY(-5px) rotateX(1deg) rotateY(-1deg);
+        }
+
+        .screen-content {
+            width: 100%;
+            transform: translateZ(20px);
+        }
+
+        header h1 {
+            text-align: center;
+            font-family: 'Fira Code', monospace;
+            font-size: 8vw; /* Адаптивный размер шрифта */
+            color: var(--primary-color);
+            margin: 0;
+            text-shadow: 0 0 10px var(--primary-color), 0 0 20px rgba(0, 255, 0, 0.4);
+            transform: translateZ(5px);
+            transition: all 0.3s;
+        }
+
+        header p {
+            text-align: center;
+            color: var(--secondary-color);
+            font-size: 3vw; /* Адаптивный размер шрифта */
+            margin: 1vw 0;
+            transform: translateZ(5px);
+        }
+
+        .balance-box {
+            text-align: center;
+            margin: 4vw 0;
+            padding: 2vw;
+            border: 1px solid var(--border-color);
+            border-radius: 1.5vw;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: var(--shadow);
+            transform: translateZ(10px);
+        }
+
+        .balance-box p:first-child {
+            font-family: 'Fira Code', monospace;
+            font-size: 8vw; /* Адаптивный размер шрифта */
+            font-weight: bold;
+            color: var(--primary-color);
+            text-shadow: var(--light-glow);
+            margin: 0.5vw 0;
+        }
+
+        #user-level {
+            font-family: 'Fira Code', monospace;
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            color: var(--secondary-color);
+            margin: 1vw 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .user-avatar {
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            margin-right: 1.5vw;
+        }
+
+        #wallet-info {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--secondary-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 3vw; /* Адаптивный размер шрифта */
+            padding: 2vw 3vw;
+            border-radius: 1.5vw;
+            margin-top: 2vw;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            word-break: break-all;
+            box-shadow: 0 0 5px var(--secondary-color);
+            transform: translateZ(5px);
+        }
+
+        #wallet-info:hover {
+            box-shadow: 0 0 15px var(--secondary-color);
+            transform: scale(1.02) translateZ(10px);
+        }
+        
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 3vw;
+            width: 100%;
+        }
+        
+        /* Новый стиль текста таймера */
+        #claim-timer-text {
+            text-align: center;
+            font-family: 'Fira Code', monospace;
+            color: var(--highlight-color);
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            margin-top: -2vw;
+            margin-bottom: 2vw;
+            transform: translateZ(5px);
+        }
+
+        /* CLAIM BUTTON STYLES */
+        #claim-btn {
+            width: 45vw; /* Адаптивный размер кнопки */
+            height: 45vw; /* Адаптивный размер кнопки */
+            border-radius: 50%;
+            align-self: center;
+            border: 0.5vw solid var(--primary-color);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.4), inset 0 0 20px rgba(0, 255, 0, 0.2);
+            background: radial-gradient(circle, rgba(0, 255, 0, 0.3) 0%, rgba(0, 255, 255, 0.3) 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            transform: translateZ(10px);
+            transform-style: preserve-3d;
+        }
+        
+        #claim-btn:hover {
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.8), inset 0 0 30px rgba(0, 255, 0, 0.4);
+            transform: scale(1.05) translateZ(20px) rotateX(5deg);
+        }
+
+        /* RPZD текст с эффектом свечения */
+        #claim-btn::before {
+            content: 'RPZD';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) translateZ(1px);
+            font-size: 16vw; /* Адаптивный размер шрифта */
+            color: var(--primary-color);
+            font-family: 'Fira Code', monospace;
+            z-index: 0;
+            text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color);
+            opacity: 0.5;
+        }
+        
+        /* -- ВДАВЛЕННЫЙ 3D-ЭФФЕКТ -- */
+        #rotating-69 {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          font-family: 'Nunito', sans-serif;
+          font-size: 34vw; /* Адаптивный размер шрифта */
+          color: var(--bg-color);
+          font-weight: 900;
+          -webkit-text-stroke: 0.7vw var(--text-color); /* Адаптивная толщина обводки */
+          text-shadow: 
+            -0.5vw -0.5vw 1vw rgba(255, 255, 255, 0.7), 
+            0.5vw 0.5vw 1vw rgba(0, 0, 0, 0.2), 
+            0 0 2vw rgba(0, 0, 0, 0.1);
+          animation: slowRotate 10s linear infinite;
+        }
+
+        #claim-btn:hover #rotating-69 {
+            text-shadow: 
+            -0.7vw -0.7vw 1.5vw rgba(255, 255, 255, 0.9), 
+            0.7vw 0.7vw 1.5vw rgba(0, 0, 0, 0.3), 
+            0 0 3vw rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes slowRotate {
+            from { transform: rotate(0deg) translateZ(2px); }
+            to { transform: rotate(360deg) translateZ(2px); }
+        }
+        
+        /* Регулярные кнопки с контуром */
+        button:not(#claim-btn) {
+            padding: 3vw; /* Адаптивный padding */
+            background: var(--secondary-color);
+            color: var(--bg-color);
+            border: 0.3vw solid var(--primary-color); /* Адаптивная толщина обводки */
+            border-radius: 1.5vw;
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transform: translateY(0) translateZ(5px);
+        }
+
+        button:not(#claim-btn):hover {
+            box-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color);
+            transform: translateY(-5px) scale(1.02) translateZ(10px);
+        }
+
+        button:not(#claim-btn):active {
+            transform: translateY(0) translateZ(5px);
+        }
+        
+        .ad-banner {
+            margin: 4vw 0;
+            background: linear-gradient(90deg, var(--highlight-color), var(--secondary-color));
+            color: var(--bg-color);
+            padding: 3vw;
+            text-align: center;
+            border-radius: 1.5vw;
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            cursor: pointer;
+            border: none;
+            box-shadow: var(--shadow);
+            text-shadow: none;
+            transition: all 0.3s;
+            transform: translateZ(5px);
+        }
+        
+        .ad-banner:hover {
+            transform: translateY(-5px) translateZ(10px);
+        }
+
+        footer {
+            text-align: center;
+            color: #777;
+            font-size: 3vw; /* Адаптивный размер шрифта */
+            margin-top: 4vw;
+            transform: translateZ(5px);
+        }
+
+        /* Скрываем ВСЕ экраны по умолчанию */
+        .app, .missions-screen, .safe-screen, .admin-panel-screen, .gang-screen, .vip-screen, .info-screen {
+            display: none;
+        }
+
+        /* Показываем только главный экран при загрузке страницы */
+        .app {
+            display: flex;
+        }
+
+        .mission-item, .admin-item, .gang-member-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5vw;
+            padding: 3vw;
+            margin-bottom: 3vw;
+            box-shadow: var(--shadow);
+            transform: translateZ(5px);
+        }
+        
+        .mission-title, .admin-title, .gang-title {
+            font-family: 'Fira Code', monospace;
+            font-weight: bold;
+            color: var(--primary-color);
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            margin-bottom: 2vw;
+            text-shadow: var(--light-glow);
+        }
+
+        .mission-reward {
+            color: var(--highlight-color);
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            text-shadow: 0 0 5px var(--highlight-color);
+        }
+        
+        .mission-progress {
+            height: 2vw;
+            background: #222;
+            border-radius: 1vw;
+            margin: 2vw 0;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+        }
+        
+        .mission-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+        }
+        
+        .mission-button {
+            width: 100%;
+        }
+        
+        .mission-button.completed {
+            background: var(--primary-color) !important;
+            color: var(--bg-color) !important;
+        }
+
+        .mission-link {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            display: block;
+            margin: 2vw 0;
+            word-break: break-all;
+        }
+
+        .wc-button {
+            background: var(--primary-color) !important;
+            color: var(--bg-color) !important;
+            text-shadow: none !important;
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(0, 255, 0, 0.4) !important;
+        }
+        
+        /* Safe Screen Styling */
+        #safe-container {
+            position: relative;
+            width: 80vw;
+            height: 80vw;
+            max-width: 400px;
+            max-height: 400px;
+            margin: 4vw auto;
+            transform: translateZ(10px);
+            border: 1px solid #777; /* Серый цвет для сейфа */
+            border-radius: 1.5vw;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7), inset 0 0 10px rgba(255,255,255,0.1);
+            overflow: hidden;
+            background: linear-gradient(to bottom, #444, #222); /* Градиент для объемности */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #safe-dial {
+            font-family: 'Fira Code', monospace;
+            font-size: 15vw; /* Большие цифры */
+            color: var(--primary-color);
+            text-shadow: 0 0 10px var(--primary-color);
+            display: inline-block;
+            white-space: pre; /* Сохраняет пробелы для анимации */
+        }
+        
+        #safe-result-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Fira Code', monospace;
+            font-size: 6vw; /* Адаптивный размер шрифта */
+            color: var(--primary-color);
+            text-align: center;
+            text-shadow: 0 0 10px var(--primary-color);
+            z-index: 2;
+            padding: 1vw; /* Добавил padding */
+            background: rgba(0,0,0,0.7); /* Фон для читаемости */
+            border-radius: 1vw;
+        }
+
+        #safe-info {
+            font-family: 'Fira Code', monospace;
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            margin: 4vw 0;
+            text-align: center;
+            color: var(--secondary-color);
+        }
+        
+        #safe-feed {
+            width: 100%;
+            margin-top: 4vw;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3vw;
+            border-radius: 1.5vw;
+            max-height: 25vh;
+            overflow-y: auto;
+            transform: translateZ(5px);
+        }
+        
+        #safe-feed h3 {
+            font-family: 'Fira Code', monospace;
+            font-size: 4.5vw; /* Адаптивный размер шрифта */
+            color: var(--secondary-color);
+            margin-top: 0;
+            text-shadow: var(--light-glow);
+        }
+        
+        #safe-feed ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 2vw;
+        }
+        
+        #safe-feed li {
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            background: rgba(255, 255, 255, 0.03);
+            padding: 2vw;
+            border-radius: 1vw;
+            border-left: 0.5vw solid var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            word-break: break-all;
+            font-family: 'Fira Code', monospace;
+        }
+        
+        .win-text {
+            color: var(--highlight-color);
+            font-weight: bold;
+        }
+        .fail-text {
+            color: #F44336; /* Красный для проигрыша */
+            font-weight: bold;
+        }
+
+        /* Admin Panel Styling */
+        #admin-panel-screen .admin-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 3vw;
+        }
+        
+        .admin-controls .panel-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5vw;
+            padding: 3vw;
+            box-shadow: var(--shadow);
+            transform: translateZ(5px);
+        }
+        
+        .admin-controls .panel-section h3 {
+            font-family: 'Fira Code', monospace;
+            font-size: 5vw; /* Адаптивный размер шрифта */
+            color: var(--highlight-color);
+            margin-top: 0;
+            text-shadow: 0 0 5px var(--highlight-color);
+        }
+        
+        .admin-controls label {
+            display: block;
+            margin-bottom: 1vw;
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            color: var(--secondary-color);
+        }
+        
+        .admin-controls input, .admin-controls select {
+            width: 100%;
+            padding: 2vw;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 1vw;
+            color: var(--text-color);
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            margin-bottom: 2vw;
+            transition: all 0.3s;
+            transform: translateZ(2px);
+            box-sizing: border-box; /* Учитывает padding и border в ширине */
+        }
+
+        .admin-controls input:focus, .admin-controls select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            border-color: var(--secondary-color);
+            transform: scale(1.01) translateZ(4px);
+        }
+        
+        .admin-controls button {
+            width: 100%;
+            padding: 3vw;
+            font-size: 4vw; /* Адаптивный размер шрифта */
+            box-sizing: border-box; /* Учитывает padding и border в ширине */
+        }
+
+        #user-balances-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        #user-balances-list li {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2vw;
+            border-radius: 1vw;
+            margin-bottom: 1.5vw;
+            word-break: break-all;
+            font-family: 'Fira Code', monospace;
+            font-size: 3vw; /* Адаптивный размер шрифта */
+        }
+
+        #admin-mission-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        #admin-mission-list li {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2vw;
+            border-radius: 1vw;
+            margin-bottom: 1.5vw;
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+        }
+
+        #admin-mission-list button {
+            margin-top: 1.5vw;
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+            padding: 2vw;
+        }
+        
+        .info-screen h2 {
+            font-family: 'Fira Code', monospace;
+            font-size: 5vw; /* Адаптивный размер шрифта */
+            color: var(--highlight-color);
+            margin-top: 5vw;
+            text-shadow: 0 0 5px var(--highlight-color);
+        }
+
+        .info-screen h3 {
+            font-family: 'Fira Code', monospace;
+            font-size: 4.5vw; /* Адаптивный размер шрифта */
+            color: var(--secondary-color);
+            margin-top: 4vw;
+        }
+        
+        .info-screen ul {
+            list-style-type: '👉 ';
+            padding-left: 5vw;
+        }
+        
+        .info-screen li {
+            margin-bottom: 2vw;
+            font-size: 3.5vw; /* Адаптивный размер шрифта */
+        }
+
+        /* Добавленные стили для реферальной ссылки */
+        #ref-link-container {
+            display: flex;
+            align-items: center;
+            gap: 2vw;
+            margin-top: 3vw;
+        }
+
+        #ref-link-input {
+            flex-grow: 1;
+            padding: 2.5vw;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5vw;
+            color: var(--text-color);
+            font-size: 3.5vw;
+            word-break: break-all;
+            box-sizing: border-box;
+        }
+
+        #copy-ref-link-btn {
+            padding: 2.5vw 4vw;
+            font-size: 3.5vw;
+            white-space: nowrap;
+        }
+
+        /* Модальное окно для шаринга */
+        .share-modal {
+            display: none; /* Скрыто по умолчанию */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .share-modal-content {
+            background: var(--panel-bg);
+            margin: auto;
+            padding: 5vw;
+            border: 1px solid var(--border-color);
+            border-radius: 1.5vw;
+            width: 80%;
+            max-width: 350px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transform: translateZ(20px);
+            position: relative;
+        }
+
+        .share-modal-content h3 {
+            color: var(--primary-color);
+            font-size: 5vw;
+            margin-top: 0;
+            margin-bottom: 4vw;
+        }
+
+        .share-modal-content p {
+            font-size: 3.5vw;
+            color: var(--text-color);
+            margin-bottom: 4vw;
+            word-break: break-all;
+        }
+
+        .share-modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 3vw;
+        }
+
+        .share-modal-buttons a {
+            display: block;
+            padding: 3vw;
+            border-radius: 1.5vw;
+            text-decoration: none;
+            color: var(--bg-color);
+            font-size: 4vw;
+            transition: all 0.3s;
+        }
+
+        .share-modal-buttons a.telegram { background-color: #2AABEE; }
+        .share-modal-buttons a.whatsapp { background-color: #25D366; }
+        .share-modal-buttons a.vkontakte { background-color: #4C75A3; }
+        .share-modal-buttons a.facebook { background-color: #1877F2; }
+
+        .share-modal-buttons a:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+
+        .close-button {
+            position: absolute;
+            top: 2vw;
+            right: 3vw;
+            color: var(--text-color);
+            font-size: 5vw;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-button:hover {
+            color: var(--highlight-color);
+        }
+
+
+        @media (min-width: 600px) {
+            html { font-size: 16px; }
+            .app, .missions-screen, .safe-screen, .admin-panel-screen, .gang-screen, .vip-screen, .info-screen {
+                max-width: 500px;
+                width: 500px; /* Фиксированная ширина для десктопа */
+                padding: 24px;
+            }
+            .app:hover {
+                transform: translateY(-5px) rotateX(1deg) rotateY(-1deg) translateZ(5px);
+            }
+            #safe-container {
+                width: 350px;
+                height: 350px;
+            }
+            header h1 { font-size: 48px; }
+            header p { font-size: 16px; }
+            .balance-box p:first-child { font-size: 48px; }
+            #user-level { font-size: 24px; }
+            .user-avatar { font-size: 24px; margin-right: 8px; }
+            #wallet-info, button:not(#claim-btn) { font-size: 16px; padding: 12px; }
+            #claim-btn { width: 200px; height: 200px; }
+            #claim-btn:hover {
+                transform: scale(1.05) translateZ(20px) rotateX(5deg);
+            }
+            #claim-btn::before { font-size: 64px; }
+            #rotating-69 { font-size: 120px; -webkit-text-stroke: 4px var(--text-color); }
+            #claim-timer-text { font-size: 20px; }
+            .mission-title, .mission-reward, .mission-link, .ad-banner, footer, .admin-controls input, .admin-controls label, .admin-controls button, #admin-mission-list li, #admin-mission-list button { font-size: 16px; }
+            #safe-info { font-size: 18px; }
+            #safe-result-display { font-size: 36px; }
+            .admin-controls .panel-section h3 { font-size: 20px; }
+            .info-screen h2 { font-size: 24px; }
+            .info-screen h3 { font-size: 20px; }
+            .info-screen li, .info-screen p { font-size: 16px; }
+            #safe-feed h3 { font-size: 20px; }
+            #safe-feed li { font-size: 16px; }
+
+            /* Десктопные стили для реферальной ссылки и модального окна */
+            #ref-link-input { font-size: 16px; padding: 10px; }
+            #copy-ref-link-btn { font-size: 16px; padding: 10px 15px; }
+            .share-modal-content h3 { font-size: 24px; }
+            .share-modal-content p { font-size: 16px; }
+            .share-modal-buttons a { font-size: 16px; padding: 12px; }
+            .close-button { font-size: 24px; top: 10px; right: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="main-app">
+        <div class="screen-content">
+            <header>
+                <h1>🧠 RPZD Cult</h1>
+                <p>Токен настоящих распиздяев</p>
+            </header>
+    
+            <div class="balance-box">
+                <p>💰 <span id="rpzd-balance">0</span> RPZD</p>
+                <p id="user-level"><span class="user-avatar" id="user-avatar"></span><span id="user-level-text">Начинающий распиздяй</span></p>
+                <p id="wallet-info" title=""></p>
+            </div>
+            <div class="buttons">
+                <div id="connect-wallet-btn"></div>
+                <button id="claim-btn">
+                    <span id="rotating-69">69</span>
+                </button>
+                <p id="claim-timer-text"></p>
+                <button id="safe-cracking-btn">🔒 Взломать Сейф!</button>
+                <button id="gang-btn">👥 Поднять Банду</button>
+                <button id="mission-btn">🏆 Задания для Пацанчиков</button>
+                <button id="vip-btn">⭐ VIP-Покупка</button>
+                <button id="info-btn">ℹ️ Чё как, братан?</button>
+                <button id="admin-btn" style="display: none;">Задний Вход🚪</button>
+            </div>
+            <div class="ad-banner" id="idea-banner" style="display: none;"></div>
+            <footer>
+                <p class="quote" id="daily-quote">💬 Флекс — это не выбор, а образ жизни.</p>
+                <p>© 2025 Распиздяи</p>
+            </footer>
+        </div>
+    </div>
+
+    <div class="missions-screen" id="missions-screen">
+        <div class="screen-content">
+            <header><h1>🧪 Задания для ЧСВ</h1></header>
+            <div id="missions-container"></div>
+            <div class="buttons">
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="safe-screen" id="safe-screen">
+        <div class="screen-content">
+            <header><h1>🔒 Взлом Сейфа</h1></header>
+            <div id="safe-info">
+                <p>Стоимость попытки: <span style="color: var(--highlight-color);">10 RPZD</span> или <span id="free-cracks-count">0</span> бесплатных попыток</p>
+                <p id="safe-result-msg" style="font-weight: bold; color: var(--primary-color);"></p>
+            </div>
+            <div id="safe-container">
+                <div id="safe-dial">000</div>
+                <div id="safe-result-display"></div>
+            </div>
+            <div class="buttons">
+                <button id="start-safe-cracking-btn">Взломать Сейф!</button>
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+            <div id="safe-feed">
+                <h3>Последние попытки взлома</h3>
+                <ul id="safe-attempts-list">
+                    </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="gang-screen" id="gang-screen">
+        <div class="screen-content">
+            <header><h1>👥 Моя Банда</h1></header>
+            <div id="gang-container">
+                <p>Пригласи братишек и качайся вместе!</p>
+                <ul id="gang-members-list"></ul>
+                <p id="ref-link-text">Твоя реферальная ссылка:</p>
+                <div id="ref-link-container">
+                    <input type="text" id="ref-link-input" readonly />
+                    <button id="copy-ref-link-btn">Копировать</button>
+                </div>
+                <button id="share-ref-link-btn" style="margin-top: 3vw;">Поделиться ссылкой</button>
+            </div>
+            <div class="buttons">
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="vip-screen" id="vip-screen">
+        <div class="screen-content">
+            <header><h1>⭐ VIP-Шмот</h1></header>
+            <p>Получи VIP-статус на 10 дней!</p>
+            <p>Преимущества:</p>
+            <ul>
+                <li>Клейм раз в 2 часа вместо 3</li>
+                <li>Дополнительные бонусы в будущем</li>
+            </ul>
+            <p>Стоимость: 10 TON</p>
+            <div class="buttons">
+                <button id="buy-vip-btn">Купить VIP</button>
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-screen" id="info-screen">
+        <div class="screen-content">
+            <header><h1>ℹ️ Чё как, братан?</h1></header>
+            <p>🪙 RPZD — Токен Культа Распиздяев</p>
+            <p>RPZD — это не просто монета. Это символ свободы, юмора, флекса и дикой энергии настоящих культовых персонажей. Без KYC, без банков и сраных регуляторов.</p>
+            
+            <h2>📜 Токеномика RPZD</h2>
+            <p>Максимальная эмиссия: 690,000,000 RPZD</p>
+            
+            <h3>КатегорияКоличествоОписание</h3>
+            <ul>
+                <li>🧧 Раздача: 50% (345M) - За вайб, мемы, фарм</li>
+                <li>📣 Реклама: 15% (103.5M) - Охваты, вирус</li>
+                <li>💰 Листинг: 20% (138M) - Биржи и ликвидность</li>
+                <li>🛠️ Разработка: 10% (69M) - Приложения, боты</li>
+                <li>🧳 Резерв: 5% (34.5M) - Флекс или яхта :)</li>
+                <li>🎁 Спонсоры: 10% - Ранние помощники</li>
+            </ul>
+
+            <h2>🗺️ Дорожная карта</h2>
+            <ul>
+                <li>Контракт создан</li>
+                <li>Фарм-бот активен</li>
+                <li>TON-кошельки подключены</li>
+                <li>Рефералька даёт +10%</li>
+                <li>Запущена рекламная кампания</li>
+                <li>DeDust и STON.fi — скоро</li>
+                <li>Переговоры: OKX, Bybit, MEXC</li>
+                <li>Кнопка “Забрать добычу” — после раздачи</li>
+                <li>Листинг после набора ликвидности</li>
+            </ul>
+
+            <h2>💸 Ликвидность</h2>
+            <p>Все средства от подписок, пожертвований, рекламы идут на ликвидность токена. Честно и прозрачно.</p>
+
+            <h2>👑 После листинга</h2>
+            <p>✅Контракт заблокирован навсегда. Никакой доп. эмиссии. Вся власть — у холдеров. Токен децентрализован. Никаких фокусов — только культ.</p>
+
+            <h2>🌀 Присоединяйся</h2>
+            <p>Фарми RPZD, участвуй в мем-культуре, будь распиздяем. Токен не для инвесторов. Токен — для своих.</p>
+            
+            <div class="buttons">
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="admin-panel-screen" id="admin-panel-screen">
+        <div class="screen-content">
+            <header><h1>🛠️ Админ-панель</h1></header>
+            <div class="admin-controls">
+                <div class="panel-section">
+                    <h3>Управление балансом</h3>
+                    <label for="admin-address-input">Адрес кошелька</label>
+                    <input type="text" id="admin-address-input" placeholder="Введите адрес кошелька" />
+                    <label for="admin-balance-input">Количество RPZD</label>
+                    <input type="number" id="admin-balance-input" placeholder="Введите количество" />
+                    <button id="set-balance-btn">Изменить баланс</button>
+                    
+                    <h3 style="margin-top: 3vw;">Бесплатные попытки взлома</h3>
+                    <label for="admin-free-cracks-address-input">Адрес кошелька</label>
+                    <input type="text" id="admin-free-cracks-address-input" placeholder="Введите адрес кошелька" />
+                    <label for="admin-free-cracks-count-input">Количество бесплатных попыток</label>
+                    <input type="number" id="admin-free-cracks-count-input" placeholder="Введите количество" />
+                    <button id="set-free-cracks-btn">Установить бесп. попытки</button>
+                </div>
+                
+                <div class="panel-section">
+                    <h3>Список пользователей</h3>
+                    <ul id="user-balances-list"></ul>
+                </div>
+                
+                <div class="panel-section">
+                    <h3>Управление миссиями</h3>
+                    <label for="mission-id-input">ID миссии</label>
+                    <input type="number" id="mission-id-input" placeholder="Введите ID" />
+                    <label for="mission-title-input">Название миссии</label>
+                    <input type="text" id="mission-title-input" placeholder="Название" />
+                    <label for="mission-reward-input">Награда</label>
+                    <input type="number" id="mission-reward-input" placeholder="Награда RPZD" />
+                    <label for="mission-target-input">Цель</label>
+                    <input type="number" id="mission-target-input" placeholder="Цель" />
+                    <label for="mission-type-input">Тип</label>
+                    <input type="text" id="mission-type-input" placeholder="Тип (например, 'claim')" />
+                    <label for="mission-link-input">Ссылка на миссию</label>
+                    <input type="text" id="mission-link-input" placeholder="URL для миссии (необязательно)" />
+                    <button id="add-mission-btn">Добавить/изменить миссию</button>
+                    <ul id="admin-mission-list"></ul>
+                </div>
+                
+                <div class="panel-section">
+                    <h3>Управление баннером</h3>
+                    <label for="banner-text-input">Текст баннера</label>
+                    <input type="text" id="banner-text-input" placeholder="Введите текст баннера" />
+                    <label for="banner-link-input">Ссылка баннера</label>
+                    <input type="text" id="banner-link-input" placeholder="Введите URL для баннера (необязательно)" />
+                    <button id="save-banner-btn">Сохранить</button>
+                    <button id="disable-banner-btn">Выключить баннер</button>
+                </div>
+            </div>
+            <div class="buttons">
+                <button onclick="backToMain()">🔙 Назад</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="share-modal" class="share-modal">
+        <div class="share-modal-content">
+            <span class="close-button" onclick="closeShareModal()">&times;</span>
+            <h3>Поделиться реферальной ссылкой</h3>
+            <p id="share-modal-text"></p>
+            <div class="share-modal-buttons">
+                <a href="#" class="telegram" id="share-telegram" target="_blank">Telegram</a>
+                <a href="#" class="whatsapp" id="share-whatsapp" target="_blank">WhatsApp</a>
+                <a href="#" class="vkontakte" id="share-vkontakte" target="_blank">ВКонтакте</a>
+                <a href="#" class="facebook" id="share-facebook" target="_blank">Facebook</a>
+            </div>
+        </div>
+    </div>
+
+    <audio id="crack-sound" src="YOUR_CRACKING_SOUND_URL.mp3" preload="auto"></audio>
+    <audio id="win-sound" src="YOUR_WIN_SOUND_URL.mp3" preload="auto"></audio>
+    <audio id="fail-sound" src="YOUR_FAIL_SOUND_URL.mp3" preload="auto"></audio>
+
+    <script>
+        // Глобальная функция для возврата на главный экран
+        function backToMain() {
+            console.log('backToMain() called');
+            document.getElementById('main-app').style.display = 'flex';
+            document.getElementById('missions-screen').style.display = 'none';
+            document.getElementById('safe-screen').style.display = 'none';
+            document.getElementById('admin-panel-screen').style.display = 'none';
+            document.getElementById('gang-screen').style.display = 'none';
+            document.getElementById('vip-screen').style.display = 'none';
+            document.getElementById('info-screen').style.display = 'none';
+        }
+        
+        // Глобальная функция для удаления миссии
+        function deleteMission(id) {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+            const db = getDatabase();
+            const missionRef = ref(db, 'missions/' + id);
+            remove(missionRef)
+                .then(() => {
+                    alert('Миссия удалена.');
+                    updateAdminPanel();
+                })
+                .catch((error) => {
+                    console.error("Error removing mission: ", error);
+                    alert("Ошибка при удалении миссии.");
+                });
+        }
+
+        // Глобальная функция для загрузки миссии в форму редактирования
+        function editMission(id) {
+            const mission = missions.find(m => m.id === id);
+            if (mission) {
+                document.getElementById('mission-id-input').value = id;
+                document.getElementById('mission-title-input').value = mission.title;
+                document.getElementById('mission-reward-input').value = mission.reward;
+                document.getElementById('mission-target-input').value = mission.target;
+                document.getElementById('mission-type-input').value = mission.type;
+                document.getElementById('mission-link-input').value = mission.link || '';
+            }
+        }
+
+        // Функции для управления модальным окном шеринга
+        function openShareModal(shareText, refLink) {
+            const modal = document.getElementById('share-modal');
+            document.getElementById('share-modal-text').textContent = shareText;
+            document.getElementById('share-telegram').href = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent('Присоединяйся к RPZD Cult!')}`;
+            document.getElementById('share-whatsapp').href = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
+            document.getElementById('share-vkontakte').href = `https://vk.com/share.php?url=${encodeURIComponent(refLink)}&title=${encodeURIComponent('RPZD Cult')}&comment=${encodeURIComponent('Присоединяйся к RPZD Cult!')}`;
+            document.getElementById('share-facebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(refLink)}`;
+            modal.style.display = 'flex';
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').style.display = 'none';
+        }
+
+    </script>
+    
+    <script type="module">
+        // Импортируем функции Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+        import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+        // Твоя конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAb1uc8Totp7lIjiyOZx_OUm5zxXPHpqtU",
+            authDomain: "rpzd-9b0d2.firebaseapp.com",
+            databaseURL: "https://rpzd-9b0d2-default-rtdb.firebaseio.com",
+            projectId: "rpzd-9b0d2",
+            storageBucket: "rpzd-9b0d2.firebase.app",
+            messagingSenderId: "38397028434",
+            appId: "1:38397028434:web:3943be34777fd05339178b",
+            measurementId: "G-T9DBQ3Y9GP"
+        };
+        // Инициализируем Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getDatabase(app);
+
+        // WARNING: This is a client-side application. All data stored in localStorage is insecure
+        // and can be manipulated by the user. For a real-world application, all mission and balance
+        // logic should be handled on a secure backend server.
+        
+        // --- Константы ---
+        const ADMIN_ADDRESSES = ["0:296d4b67108be96c1cea5481c2eb11843b0e10afbab23b7e5aae73696b233565"];
+        const CLAIM_INTERVAL = 3 * 60 * 60 * 1000;
+        const VIP_CLAIM_INTERVAL = 2 * 60 * 60 * 1000;
+        const RPZD_AMOUNT = 69;
+        const SAFE_CRACK_COST = 10; // Стоимость одной попытки взлома
+        const FREE_CRACK_INTERVAL = 1 * 60 * 60 * 1000; // 1 час
+        const MAX_FREE_CRACKS_PER_HOUR = 3; // Максимум бесплатных попыток в час
+
+        // ВАЖНО: Замените "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM" на АДРЕС ВАШЕГО TON-КОШЕЛЬКА для получения оплаты за VIP.
+        const VIP_WALLET_ADDRESS = "UQApbUtnEIvpbBzqVIHC6xGEOw4Qr7qyO35arnNpayM1ZWJa"; 
+        const VIP_COST_TON = 10; // Стоимость VIP в TON
+        const VIP_DURATION_DAYS = 10; // Длительность VIP в днях
+
+        // Новые призы для "Взлома Сейфа" с юмористическими сообщениями
+        const SAFE_CRACK_PRIZES = [
+            { id: 0, type: 'rpzd', value: 100, text: "🤯 ОГО! Сейф разорвало в клочья! ЭТО ДЖЕКПОТ!", color: "#FF00FF", weight: 0.5 }, // Джекпот
+            { id: 1, type: 'rpzd', value: 70, text: "🎉 Дверь сейфа распахнулась! 70 RPZD твои!", color: "#00FFFF", weight: 1 },
+            { id: 2, type: 'rpzd', value: 55, text: "Ты это сделал! Сейф опустошен: +55 RPZD", color: "#00FF00", weight: 2 },
+            { id: 3, type: 'rpzd', value: 50, text: "Сейф поддался! Мои поздравления: +50 RPZD", color: "#FFC107", weight: 3 },
+            { id: 4, type: 'rpzd', value: 30, text: "Отлично! +30 RPZD из сейфа!", color: "#2196F3", weight: 5 },
+            { id: 5, type: 'rpzd', value: 15, text: "Мелочь, но приятно: +15 RPZD", color: "#9C27B0", weight: 7 },
+            { id: 6, type: 'rpzd', value: 5, text: " RPZD-дача! +5 RPZD", color: "#4CAF50", weight: 10 },
+            { id: 7, type: 'free_crack', value: 1, text: "Нашел отмычку! +1 Бесплатная Попытка", color: "#FFFF00", weight: 11 },
+            { id: 8, type: 'loss', value: 0, text: "Эх, не в этот раз! Сейф оказался крепким орешком, но мы его наебем в другой раз!", color: "#E0E0E0", weight: 4 },
+            { id: 9, type: 'loss', value: -10, text: "Система заблокировалась. Ну ничего страшного, в другой раз мы его наебем! (-10 RPZD)", color: "#F44336", weight: 8 },
+        ];
+
+        const quotes = [
+            "Флекс — это не выбор, а образ жизни.",
+            "Настоящий распиздяй не ждёт, он берёт.",
+            "Кто держит RPZD — тот рулит.",
+            "Настоящий распиздяй всегда в плюсе.",
+            "Если жизнь бьёт — бей в ответ токеном.",
+            "Пока другие думают — распиздяи флексят."
+        ];
+        const userLevels = [
+            { threshold: 0, text: 'Начинающий распиздяй', avatar: '🐣' },
+            { threshold: 1000, text: 'Опытный распиздяй', avatar: '😎' },
+            { threshold: 5000, text: 'Продвинутый распиздяй', avatar: '🧑‍💻' },
+            { threshold: 10000, text: 'Мастер распиздяйства', avatar: '👑' },
+            { threshold: 50000, text: 'Легенда RPZD', avatar: '🚀' },
+        ];
+
+        // TonConnectUI setup
+        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: 'https://rpzd-cult.vercel.app/tonconnect-manifest.json',
+            buttonRootId: 'connect-wallet-btn'
+        });
+
+        let walletAddress = null;
+        let missions = [];
+        let bannerData = null;
+        let isCracking = false;
+        
+        let balances = {};
+        let lastClaims = {};
+        let userProgress = {};
+        let userIsVip = false;
+        let userFreeCracks = 0;
+        let lastFreeCrackReset = 0;
+        
+        // --- Firebase Functions ---
+        function loadMissions() {
+            const missionsRef = ref(db, 'missions');
+            onValue(missionsRef, (snapshot) => {
+                const data = snapshot.val();
+                missions = data ? Object.values(data) : [];
+                missions.sort((a, b) => a.id - b.id);
+                updateMissionsDisplay();
+                updateAdminPanel();
+            });
+        }
+        
+        function loadBanner() {
+            const bannerRef = ref(db, 'banner');
+            onValue(bannerRef, (snapshot) => {
+                bannerData = snapshot.val();
+                updateUI();
+            });
+        }
+        
+        function loadSafeFeed() {
+            const safeFeedRef = ref(db, 'safe_attempts');
+            onValue(safeFeedRef, (snapshot) => {
+                const feed = document.getElementById('safe-attempts-list');
+                feed.innerHTML = '';
+                const data = snapshot.val();
+                if (data) {
+                    const latestAttempts = Object.values(data).slice(-5).reverse();
+                    latestAttempts.forEach(attempt => {
+                        const li = document.createElement('li');
+                        const shortAddress = attempt.walletAddress.substring(0, 6) + '...' + attempt.walletAddress.substring(attempt.walletAddress.length - 4);
+                        const resultClass = attempt.type === 'loss' ? 'fail-text' : 'win-text';
+                        li.innerHTML = `
+                            <span>${shortAddress}</span>
+                            <span class="${resultClass}">${attempt.prizeText}</span>
+                        `;
+                        feed.appendChild(li);
+                    });
+                }
+            });
+        }
+
+        function addOrUpdateMission(id, title, reward, target, type, link) {
+            const missionData = {
+                id: Number(id),
+                title: title,
+                reward: Number(reward),
+                target: Number(target),
+                type: type,
+                link: link || ''
+            };
+            set(ref(db, 'missions/' + id), missionData)
+                .then(() => {
+                    alert('Миссия успешно добавлена/изменена.');
+                    clearMissionForm();
+                })
+                .catch((error) => {
+                    console.error("Error writing mission: ", error);
+                    alert("Ошибка при добавлении/изменении миссии.");
+                });
+        }
+        
+        function updateUser(address, data) {
+            update(ref(db, 'users/' + address), data)
+                .catch((error) => {
+                    console.error("Error updating user data: ", error);
+                });
+        }
+        
+        function completeMission(missionId) {
+            if (!walletAddress) {
+                alert('Подключите кошелек, чтобы получить награду.');
+                return;
+            }
+
+            const mission = missions.find(m => m.id === missionId);
+            if (!mission) {
+                alert('Такой миссии не существует.');
+                return;
+            }
+
+            onValue(ref(db, `users/${walletAddress}/completedMissions/${missionId}`), (snapshot) => {
+                if (snapshot.exists()) {
+                    alert('Вы уже выполнили это задание.');
+                    return;
+                }
+
+                let isCompleted = false;
+                if (mission.type === 'telegram_join') {
+                    isCompleted = true; // Для телеграм-миссий предполагаем, что внешняя проверка уже произошла
+                } else if (mission.type === 'claim_count') {
+                    onValue(ref(db, `users/${walletAddress}/claimCount`), (claimSnapshot) => {
+                        const claimCount = claimSnapshot.val() || 0;
+                        if (claimCount >= mission.target) {
+                            isCompleted = true;
+                        }
+                    }, { onlyOnce: true });
+                }
+
+                if (isCompleted) {
+                    const userRef = ref(db, `users/${walletAddress}`);
+                    onValue(userRef, (userSnapshot) => {
+                        const userData = userSnapshot.val() || { balance: 0, completedMissions: {} };
+                        const newBalance = (userData.balance || 0) + mission.reward;
+
+                        const updates = {};
+                        updates[`balance`] = newBalance;
+                        updates[`completedMissions/${missionId}`] = true;
+
+                        update(userRef, updates)
+                            .then(() => {
+                                alert(`Задание выполнено! Вы получили ${mission.reward} RPZD.`);
+                                updateUI();
+                            })
+                            .catch(error => console.error("Error rewarding mission: ", error));
+                    }, { onlyOnce: true });
+                } else {
+                    alert('Задание еще не выполнено. Пожалуйста, выполните все условия.');
+                }
+            }, { onlyOnce: true });
+        }
+        
+        // --- End of Firebase Functions ---
+
+        function updateMissionsDisplay() {
+            const container = document.getElementById('missions-container');
+            container.innerHTML = '';
+            
+            missions.forEach(mission => {
+                const missionEl = document.createElement('div');
+                missionEl.className = 'mission-item';
+                missionEl.innerHTML = `
+                    <p class="mission-title">${mission.title}</p>
+                    <p>Награда: <span class="mission-reward">${mission.reward} RPZD</span></p>
+                    ${mission.link ? `<a href="${mission.link}" target="_blank" class="mission-link">Перейти к заданию</a>` : ''}
+                    <button class="mission-button" onclick="completeMission(${mission.id})">Получить награду</button>
+                `;
+                container.appendChild(missionEl);
+            });
+        }
+        
+        function updateAdminPanel() {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) return;
+            
+            const bannerRef = ref(db, 'banner');
+            onValue(bannerRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('banner-text-input').value = data.text || '';
+                    document.getElementById('banner-link-input').value = data.link || '';
+                } else {
+                    document.getElementById('banner-text-input').value = '';
+                    document.getElementById('banner-link-input').value = '';
+                }
+            }, { onlyOnce: true });
+
+            const adminMissionList = document.getElementById('admin-mission-list');
+            adminMissionList.innerHTML = '';
+            missions.forEach(m => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    ID: ${m.id} | Название: ${m.title} | Награда: ${m.reward} RPZD
+                    <button onclick="editMission(${m.id})">Редактировать</button>
+                    <button onclick="deleteMission(${m.id})">Удалить</button>
+                `;
+                adminMissionList.appendChild(li);
+            });
+
+            const userBalancesList = document.getElementById('user-balances-list');
+            userBalancesList.innerHTML = '';
+            onValue(ref(db, 'users'), (snapshot) => {
+                const users = snapshot.val();
+                if (users) {
+                    Object.keys(users).forEach(address => {
+                        const user = users[address];
+                        const li = document.createElement('li');
+                        li.textContent = `Address: ${address}, Balance: ${user.balance || 0} RPZD, Free Cracks: ${user.freeCracks || 0}`;
+                        userBalancesList.appendChild(li);
+                    });
+                }
+            }, { onlyOnce: true });
+        }
+
+        document.getElementById('set-balance-btn').addEventListener('click', () => {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+            const address = document.getElementById('admin-address-input').value;
+            const balance = parseInt(document.getElementById('admin-balance-input').value);
+            if (address && !isNaN(balance)) {
+                update(ref(db, `users/${address}`), { balance: balance })
+                    .then(() => {
+                        alert('Баланс успешно изменен.');
+                        updateAdminPanel();
+                    })
+                    .catch(error => console.error("Error setting balance: ", error));
+            } else {
+                alert('Пожалуйста, введите корректный адрес и числовой баланс.');
+            }
+        });
+
+        document.getElementById('set-free-cracks-btn').addEventListener('click', () => {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+            const address = document.getElementById('admin-free-cracks-address-input').value;
+            const count = parseInt(document.getElementById('admin-free-cracks-count-input').value);
+            if (address && !isNaN(count)) {
+                update(ref(db, `users/${address}`), { freeCracks: count })
+                    .then(() => {
+                        alert('Бесплатные попытки успешно установлены.');
+                        updateAdminPanel();
+                        loadData();
+                    })
+                    .catch(error => console.error("Error setting free cracks: ", error));
+            } else {
+                alert('Пожалуйста, введите корректный адрес и числовое количество попыток.');
+            }
+        });
+
+
+        document.getElementById('add-mission-btn').addEventListener('click', () => {
+            const id = document.getElementById('mission-id-input').value;
+            const title = document.getElementById('mission-title-input').value;
+            const reward = document.getElementById('mission-reward-input').value;
+            const target = document.getElementById('mission-target-input').value;
+            const type = document.getElementById('mission-type-input').value;
+            const link = document.getElementById('mission-link-input').value;
+
+            if (id && title && reward && target && type) {
+                addOrUpdateMission(id, title, reward, target, type, link);
+            } else {
+                alert('Пожалуйста, заполните все поля миссии, кроме ссылки.');
+            }
+        });
+        
+        document.getElementById('save-banner-btn').addEventListener('click', () => {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+            const text = document.getElementById('banner-text-input').value;
+            const link = document.getElementById('banner-link-input').value;
+            const bannerRef = ref(db, 'banner');
+
+            if (text) {
+                set(bannerRef, { text, link })
+                    .then(() => {
+                        alert('Баннер успешно сохранен.');
+                    })
+                    .catch((error) => {
+                        console.error("Error writing banner: ", error);
+                        alert("Ошибка при сохранении баннера.");
+                    });
+            } else {
+                alert('Текст баннера не может быть пустым.');
+            }
+        });
+        
+        document.getElementById('disable-banner-btn').addEventListener('click', () => {
+            if (!walletAddress || !ADMIN_ADDRESSES.includes(walletAddress)) {
+                alert('У вас нет прав администратора.');
+                return;
+            }
+            const bannerRef = ref(db, 'banner');
+            remove(bannerRef)
+                .then(() => {
+                    alert('Баннер выключен.');
+                    document.getElementById('banner-text-input').value = '';
+                    document.getElementById('banner-link-input').value = '';
+                })
+                .catch((error) => {
+                    console.error("Error removing banner: ", error);
+                    alert("Ошибка при выключении баннера.");
+                });
+        });
+
+        function clearMissionForm() {
+            document.getElementById('mission-id-input').value = '';
+            document.getElementById('mission-title-input').value = '';
+            document.getElementById('mission-reward-input').value = '';
+            document.getElementById('mission-target-input').value = '';
+            document.getElementById('mission-type-input').value = '';
+            document.getElementById('mission-link-input').value = '';
+        }
+
+        window.completeMission = completeMission;
+        
+        function loadData() {
+            if (!walletAddress) return;
+            const userRef = ref(db, 'users/' + walletAddress);
+            onValue(userRef, (snapshot) => {
+                const userData = snapshot.val() || { balance: 0, lastClaim: 0, isVip: false, vipUntil: 0, freeCracks: 0, lastFreeCrackReset: 0 };
+                balances[walletAddress] = userData.balance || 0;
+                lastClaims[walletAddress] = userData.lastClaim || 0;
+                userProgress[walletAddress] = userData.progress || {};
+                
+                // Проверка на истечение VIP-статуса
+                if (userData.isVip && userData.vipUntil && userData.vipUntil < Date.now()) {
+                    console.log('VIP статус истек. Обновляем...');
+                    userIsVip = false;
+                    // Отправляем обновление в Firebase
+                    update(userRef, { isVip: false });
+                } else {
+                    userIsVip = userData.isVip || false;
+                }
+
+                userFreeCracks = userData.freeCracks || 0;
+                lastFreeCrackReset = userData.lastFreeCrackReset || 0;
+                
+                // Логика сброса бесплатных попыток каждый час
+                const now = Date.now();
+                if (now - lastFreeCrackReset >= FREE_CRACK_INTERVAL) {
+                    if (userFreeCracks < MAX_FREE_CRACKS_PER_HOUR) {
+                        const newFreeCracks = MAX_FREE_CRACKS_PER_HOUR;
+                        update(userRef, { freeCracks: newFreeCracks, lastFreeCrackReset: now })
+                            .then(() => {
+                                userFreeCracks = newFreeCracks;
+                                lastFreeCrackReset = now;
+                                updateUI();
+                            })
+                            .catch(error => console.error("Error resetting free cracks: ", error));
+                    } else {
+                        // Если уже MAX, просто обновим время сброса, чтобы не сбрасывать чаще
+                        update(userRef, { lastFreeCrackReset: now })
+                             .then(() => {
+                                lastFreeCrackReset = now;
+                                updateUI();
+                            })
+                            .catch(error => console.error("Error updating lastFreeCrackReset: ", error));
+                    }
+                }
+
+                updateUI();
+                updateRefLink();
+            });
+        }
+        
+        function updateRefLink() {
+            const refLinkInput = document.getElementById('ref-link-input');
+            if (walletAddress) {
+                const refLink = `${window.location.origin}${window.location.pathname}?ref=${walletAddress}`;
+                refLinkInput.value = refLink;
+            } else {
+                refLinkInput.value = 'Подключите кошелек для получения ссылки';
+            }
+        }
+        
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ shareRefLink
+        function shareRefLink() {
+            if (!walletAddress) {
+                alert('Подключите кошелек, чтобы получить и поделиться ссылкой.');
+                tonConnectUI.openModal();
+                return;
+            }
+            const refLink = `${window.location.origin}${window.location.pathname}?ref=${walletAddress}`;
+            const shareText = `Присоединяйся к культу RPZD по моей реферальной ссылке! ${refLink}`;
+
+            if (navigator.share) {
+                // Используем нативную функцию шеринга, если доступна
+                navigator.share({
+                    title: 'RPZD Cult',
+                    text: shareText,
+                    url: refLink
+                }).then(() => {
+                    console.log('Спасибо за шеринг!');
+                }).catch((error) => {
+                    console.error('Ошибка при использовании navigator.share:', error);
+                    // Если нативный шеринг не сработал или отменен, показать модальное окно
+                    openShareModal(shareText, refLink);
+                });
+            } else {
+                // Если navigator.share не поддерживается, открываем свое модальное окно
+                openShareModal(shareText, refLink);
+            }
+        }
+        
+        // Обработчик для кнопки "Копировать"
+        document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
+            const refLinkInput = document.getElementById('ref-link-input');
+            refLinkInput.select();
+            refLinkInput.setSelectionRange(0, 99999); // Для мобильных устройств
+            document.execCommand('copy');
+            alert('Реферальная ссылка скопирована!');
+        });
+
+
+        function updateUI() {
+            const balanceSpan = document.getElementById('rpzd-balance');
+            const levelSpan = document.getElementById('user-level-text');
+            const avatarSpan = document.getElementById('user-avatar');
+            const walletInfoSpan = document.getElementById('wallet-info');
+            const adminBtn = document.getElementById('admin-btn');
+            const freeCracksSpan = document.getElementById('free-cracks-count');
+            
+            if (walletAddress) {
+                balanceSpan.textContent = (balances[walletAddress] || 0).toLocaleString();
+                const userBalance = balances[walletAddress] || 0;
+                const userLevel = userLevels.find(level => userBalance >= level.threshold) || userLevels[0];
+                levelSpan.textContent = userIsVip ? `⭐ ${userLevel.text}` : userLevel.text;
+                avatarSpan.textContent = userLevel.avatar;
+
+                const shortAddress = walletAddress.substring(0, 6) + '...' + walletAddress.substring(walletAddress.length - 4);
+                walletInfoSpan.textContent = shortAddress;
+                walletInfoSpan.title = walletAddress;
+                
+                freeCracksSpan.textContent = userFreeCracks;
+
+                if (ADMIN_ADDRESSES.includes(walletAddress)) {
+                    adminBtn.style.display = 'block';
+                    updateAdminPanel();
+                } else {
+                    adminBtn.style.display = 'none';
+                }
+            } else {
+                balanceSpan.textContent = '0';
+                levelSpan.textContent = 'Подключите кошелек';
+                avatarSpan.textContent = '🤷';
+                walletInfoSpan.textContent = 'Подключить кошелек';
+                walletInfoSpan.title = '';
+                adminBtn.style.display = 'none';
+                freeCracksSpan.textContent = '0';
+            }
+            
+            const bannerEl = document.getElementById('idea-banner');
+            if (bannerData && bannerData.text) {
+                bannerEl.textContent = bannerData.text;
+                bannerEl.style.display = 'block';
+                if (bannerData.link) {
+                    bannerEl.onclick = () => window.open(bannerData.link, '_blank');
+                    bannerEl.style.cursor = 'pointer';
+                } else {
+                    bannerEl.onclick = () => window.open('https://t.me/WMagic_RUS?text=%D0%A3%20%D0%9C%D0%B5%D0%BD%D1%8F%20%D1%80%D0%BE%D0%B4%D0%B8%D0%BB%D0%B0%D1%81%D1%8C%20%D0%9C%D1%8B%D1%81%D0%BB%D1%8C!', '_blank');
+                    bannerEl.style.cursor = 'pointer';
+                }
+            } else {
+                bannerEl.style.display = 'none';
+            }
+        }
+        
+        // Wallet connection logic
+        tonConnectUI.onStatusChange(wallet => {
+            if (wallet) {
+                walletAddress = wallet.account.address;
+                updateUI();
+                loadData();
+                checkClaimTimer();
+                updateMissionsDisplay();
+                updateRefLink();
+            } else {
+                walletAddress = null;
+                updateUI();
+                updateRefLink();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMissions();
+            loadBanner();
+            loadSafeFeed();
+            if (tonConnectUI.connected) {
+                walletAddress = tonConnectUI.wallet.account.address;
+                loadData();
+                checkClaimTimer();
+                updateRefLink();
+            } else {
+                updateUI();
+                updateRefLink();
+            }
+
+            const mainApp = document.getElementById('main-app');
+            const missionsScreen = document.getElementById('missions-screen');
+            const safeScreen = document.getElementById('safe-screen');
+            const gangScreen = document.getElementById('gang-screen');
+            const vipScreen = document.getElementById('vip-screen');
+            const infoScreen = document.getElementById('info-screen');
+            const adminPanelScreen = document.getElementById('admin-panel-screen');
+
+            const allScreens = [mainApp, missionsScreen, safeScreen, gangScreen, vipScreen, infoScreen, adminPanelScreen];
+
+            function showScreen(screenToShow) {
+                allScreens.forEach(screen => {
+                    screen.style.display = (screen === screenToShow) ? 'flex' : 'none';
+                });
+            }
+
+            document.getElementById('mission-btn').addEventListener('click', () => showScreen(missionsScreen));
+            document.getElementById('safe-cracking-btn').addEventListener('click', () => {
+                showScreen(safeScreen);
+                document.getElementById('safe-dial').textContent = '000';
+                document.getElementById('safe-result-display').textContent = '';
+                document.getElementById('safe-result-display').style.opacity = '0';
+            });
+            document.getElementById('gang-btn').addEventListener('click', () => showScreen(gangScreen));
+            // УДАЛЕНО: document.getElementById('ref-btn').addEventListener('click', () => showScreen(gangScreen));
+            document.getElementById('vip-btn').addEventListener('click', () => showScreen(vipScreen));
+            document.getElementById('info-btn').addEventListener('click', () => showScreen(infoScreen));
+            document.getElementById('admin-btn').addEventListener('click', () => {
+                if (ADMIN_ADDRESSES.includes(walletAddress)) {
+                    showScreen(adminPanelScreen);
+                    updateAdminPanel();
+                }
+            });
+            
+            // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ ПОКУПКИ VIP
+            document.getElementById('buy-vip-btn').addEventListener('click', handleVipPurchase);
+
+            // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ "Поделиться ссылкой"
+            document.getElementById('share-ref-link-btn').addEventListener('click', shareRefLink);
+        });
+
+        document.getElementById('claim-btn').addEventListener('click', () => {
+            if (!walletAddress) {
+                alert('Подключите кошелек, чтобы клеймить RPZD!');
+                return;
+            }
+
+            const now = Date.now();
+            const lastClaimTime = lastClaims[walletAddress] || 0;
+            const interval = userIsVip ? VIP_CLAIM_INTERVAL : CLAIM_INTERVAL;
+
+            if (now - lastClaimTime >= interval) {
+                const currentBalance = balances[walletAddress] || 0;
+                const newBalance = currentBalance + RPZD_AMOUNT;
+                
+                const updates = {};
+                updates['balance'] = newBalance;
+                updates['lastClaim'] = now;
+                updates['claimCount'] = (userProgress[walletAddress].claimCount || 0) + 1;
+
+                update(ref(db, `users/${walletAddress}`), updates)
+                    .then(() => {
+                        lastClaims[walletAddress] = now;
+                        balances[walletAddress] = newBalance;
+                        userProgress[walletAddress].claimCount = updates['claimCount'];
+                        updateUI();
+                        checkClaimTimer();
+                    })
+                    .catch(error => console.error("Error claiming RPZD: ", error));
+            } else {
+                alert('Подожди немного, бро. Еще не время для нового клейма!');
+            }
+        });
+        
+        function checkClaimTimer() {
+            const claimTimerText = document.getElementById('claim-timer-text');
+            if (!walletAddress) {
+                claimTimerText.textContent = '';
+                return;
+            }
+
+            const lastClaimTime = lastClaims[walletAddress] || 0;
+            const interval = userIsVip ? VIP_CLAIM_INTERVAL : CLAIM_INTERVAL;
+            const now = Date.now();
+            const timeLeft = interval - (now - lastClaimTime);
+
+            if (timeLeft <= 0) {
+                claimTimerText.textContent = 'КЛЕЙМ ДОСТУПЕН!';
+                document.getElementById('claim-btn').style.opacity = '1';
+                document.getElementById('claim-btn').style.pointerEvents = 'auto';
+            } else {
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                claimTimerText.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('claim-btn').style.opacity = '0.5';
+                document.getElementById('claim-btn').style.pointerEvents = 'none';
+            }
+            setTimeout(checkClaimTimer, 1000);
+        }
+        
+        window.completeMission = completeMission;
+        window.shareRefLink = shareRefLink; // Делаем доступной для глобального вызова
+        window.openShareModal = openShareModal; // Добавляем глобальную доступность
+        window.closeShareModal = closeShareModal; // Добавляем глобальную доступность
+        
+        // --- Safe Cracking Logic (Animated Dial) ---
+        const safeDial = document.getElementById('safe-dial');
+        const startSafeCrackingBtn = document.getElementById('start-safe-cracking-btn');
+        const safeResultDisplay = document.getElementById('safe-result-display');
+        const safeResultMsg = document.getElementById('safe-result-msg');
+
+        // Audio elements
+        const crackSound = document.getElementById('crack-sound');
+        const winSound = document.getElementById('win-sound');
+        const failSound = document.getElementById('fail-sound');
+
+        let dialAnimationInterval;
+        let crackAnimationFrameId;
+        
+        // Function to choose a prize based on weights
+        function selectPrize() {
+            let totalWeight = SAFE_CRACK_PRIZES.reduce((sum, prize) => sum + prize.weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (let i = 0; i < SAFE_CRACK_PRIZES.length; i++) {
+                random -= SAFE_CRACK_PRIZES[i].weight;
+                if (random < 0) {
+                    return SAFE_CRACK_PRIZES[i];
+                }
+            }
+            return SAFE_CRACK_PRIZES[SAFE_CRACK_PRIZES.length - 1]; // Fallback
+        }
+
+        function animateSafeDial() {
+            let count = 0;
+            safeDial.textContent = '000';
+            dialAnimationInterval = setInterval(() => {
+                count = (count + Math.floor(Math.random() * 10) + 1) % 1000;
+                safeDial.textContent = String(count).padStart(3, '0');
+            }, 50);
+        }
+
+        function stopSafeDialAnimation() {
+            clearInterval(dialAnimationInterval);
+        }
+
+        async function startSafeCracking() {
+            if (!walletAddress) {
+                alert('Подключите кошелек, чтобы взломать сейф!');
+                return;
+            }
+            if (isCracking) return;
+            
+            const hasFreeCrack = userFreeCracks > 0;
+            const currentBalance = balances[walletAddress] || 0;
+            
+            if (!hasFreeCrack && currentBalance < SAFE_CRACK_COST) {
+                alert(`У тебя не хватает RPZD для взлома сейфа. Нужно ${SAFE_CRACK_COST} RPZD.`);
+                return;
+            }
+            
+            isCracking = true;
+            startSafeCrackingBtn.disabled = true;
+            safeResultDisplay.textContent = 'Взлом...';
+            safeResultDisplay.style.color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            safeResultDisplay.style.opacity = '1';
+            safeResultMsg.textContent = ''; // Clear previous message
+
+            // Play crack sound
+            crackSound.play();
+
+            // Start dial animation
+            animateSafeDial();
+
+            const crackDuration = 3000; // 3 секунды
+            setTimeout(async () => {
+                stopSafeDialAnimation();
+                crackSound.pause(); // Stop crack sound
+                crackSound.currentTime = 0; // Reset sound
+
+                const selectedPrize = selectPrize();
+                let newBalance = currentBalance;
+                let newFreeCracks = userFreeCracks;
+
+                if (hasFreeCrack) {
+                    newFreeCracks--;
+                } else {
+                    newBalance -= SAFE_CRACK_COST;
+                }
+                
+                let prizeText = selectedPrize.text;
+                let textColor = selectedPrize.color;
+
+                if (selectedPrize.type === 'rpzd') {
+                    newBalance += selectedPrize.value;
+                    winSound.play(); // Play win sound
+                } else if (selectedPrize.type === 'free_crack') {
+                    newFreeCracks += selectedPrize.value;
+                    winSound.play(); // Play win sound
+                } else if (selectedPrize.type === 'loss') {
+                    if (selectedPrize.value < 0) {
+                        newBalance += selectedPrize.value;
+                    }
+                    failSound.play(); // Play fail sound
+                }
+
+                safeDial.textContent = '🔒'; // Show lock or a symbol when done
+                safeResultDisplay.textContent = selectedPrize.value > 0 ? `+${selectedPrize.value} RPZD` : (selectedPrize.value < 0 ? `${selectedPrize.value} RPZD` : 'Ничего');
+                safeResultDisplay.style.color = textColor;
+                safeResultMsg.textContent = prizeText;
+                
+                const updates = {};
+                updates['balance'] = newBalance;
+                updates['freeCracks'] = newFreeCracks;
+                updates['lastFreeCrackReset'] = lastFreeCrackReset;
+
+                try {
+                    await update(ref(db, `users/${walletAddress}`), updates);
+                    balances[walletAddress] = newBalance;
+                    userFreeCracks = newFreeCracks;
+                    updateUI();
+                    const safeAttemptsRef = ref(db, 'safe_attempts');
+                    const newAttemptRef = push(safeAttemptsRef);
+                    await set(newAttemptRef, {
+                        walletAddress: walletAddress,
+                        prizeText: prizeText,
+                        type: selectedPrize.type,
+                        timestamp: Date.now()
+                    });
+                    loadSafeFeed();
+                } catch (error) {
+                    console.error("Ошибка при обновлении данных взлома сейфа: ", error);
+                } finally {
+                    isCracking = false;
+                    startSafeCrackingBtn.disabled = false;
+                    setTimeout(() => {
+                        safeResultDisplay.textContent = '';
+                        safeResultDisplay.style.opacity = '0';
+                    }, 3000); // Скрыть результат через 3 секунды
+                }
+            }, crackDuration);
+        }
+
+        startSafeCrackingBtn.addEventListener('click', startSafeCracking);
+        
+        // НОВАЯ ФУНКЦИЯ ДЛЯ ПОКУПКИ VIP
+        async function handleVipPurchase() {
+            if (!walletAddress) {
+                alert('Пожалуйста, подключите кошелек для покупки VIP.');
+                tonConnectUI.openModal();
+                return;
+            }
+
+            if (VIP_WALLET_ADDRESS === "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM") { // Замени на свой адрес
+                alert("Ошибка: Адрес кошелька для VIP-оплаты не настроен. Обратитесь к администратору.");
+                return;
+            }
+
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600, // 10 минут
+                messages: [
+                    {
+                        address: VIP_WALLET_ADDRESS,
+                        amount: (VIP_COST_TON * 10**9).toString(), // в нанотонах
+                    }
+                ]
+            };
+
+            try {
+                // Отправляем транзакцию
+                await tonConnectUI.sendTransaction(transaction);
+                
+                // В случае успеха, обновляем статус пользователя в Firebase
+                const vipUntil = Date.now() + (VIP_DURATION_DAYS * 24 * 60 * 60 * 1000);
+                const userRef = ref(db, `users/${walletAddress}`);
+                
+                await update(userRef, {
+                    isVip: true,
+                    vipUntil: vipUntil
+                });
+
+                // Обновляем локальные данные и UI
+                userIsVip = true;
+                
+                alert('Поздравляем! Вы приобрели VIP-статус!');
+                updateUI();
+                backToMain();
+
+            } catch (error) {
+                console.error('Ошибка при покупке VIP:', error);
+                alert('Покупка VIP была отменена или произошла ошибка.');
+            }
+        }
+    </script>
+</body>
+</html>
